@@ -1,0 +1,46 @@
+from .variant_frequencies import VariantFrequencies
+from .data_helpers import prep_dates, format_var_names
+from .data_spec import DataSpec
+import numpy as np
+import pandas as pd
+from typing import Optional
+
+
+class HierFrequencies(DataSpec):
+    def __init__(
+        self,
+        raw_seq: pd.DataFrame,
+        group: str,
+        date_to_index: Optional[dict] = None,
+    ):
+        # Get date to index
+        if date_to_index is None:
+            self.dates, date_to_index = prep_dates(raw_seq["date"])
+        self.date_to_index = date_to_index
+
+        # Get variant names
+        raw_var_names = list(pd.unique(raw_seq.variant))
+        raw_var_names.sort()
+        self.var_names = format_var_names(raw_var_names)
+
+        # Loop each group
+        grouped = raw_seq.groupby(group)
+        self.names = [name for name, _ in grouped]
+        self.groups = [
+            VariantFrequencies(group, self.date_to_index, self.var_names)
+            for _, group in grouped
+        ]
+
+    def make_data_dict(self, data: Optional[dict] = None) -> dict:
+        if data is None:
+            data = dict()
+        data["seq_counts"] = np.stack(
+            [g.seq_counts for g in self.groups],
+            axis=-1
+        )
+        data["N"] = np.stack(
+            [g.seq_counts.sum(axis=-1) for g in self.groups],
+            axis=-1
+        )
+        data["var_names"] = self.var_names
+        return data
