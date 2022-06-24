@@ -250,7 +250,7 @@ def plot_growth_advantage(
     ax.vlines(inds, q1, q3, color="k", lw=2, zorder=1)
 
     ax.set_xticks(inds)
-    ax.set_xticklabels(LD.seq_names[:-1])
+    ax.set_xticklabels(LD.var_names[:-1])
 
 
 def plot_total_by_obs_frequency(ax, LD, total, colors: List[str]):

@@ -4,10 +4,11 @@ from .data import HierCases, HierFrequencies, HierarchicalCFData
 
 from .models import ModelSpec
 from .models import MultinomialLogisticRegression, HierMLR
+from .models.renewal_model import *
 
 from .infer import SVIHandler, MCMCHandler
 from .infer import InferSVI, InferMCMC, InferFullRank, InferMAP, InferNUTS
 
-from .posterior import PosteriorHandler 
+from .posterior import PosteriorHandler
 from .posterior import get_median, get_quantile, get_quantiles
 from .posterior import get_site_by_variant, get_freq

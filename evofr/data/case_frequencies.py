@@ -16,7 +16,7 @@ class CaseFrequencyData(DataSpec):
         var_names: Optional[List] = None,
     ):
         # Get dates
-        raw_dates = raw_cases["date"].append(raw_seq["data"])
+        raw_dates = pd.concat((raw_cases["date"], raw_seq["date"]))
         if date_to_index is None:
             self.dates, date_to_index = prep_dates(raw_dates)
         self.date_to_index = date_to_index
