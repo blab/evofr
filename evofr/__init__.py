@@ -3,7 +3,7 @@ from .data import CaseCounts, VariantFrequencies, CaseFrequencyData
 from .data import HierCases, HierFrequencies, HierarchicalCFData
 
 from .models import ModelSpec
-from .models import MultinomialLogisticRegression
+from .models import MultinomialLogisticRegression, HierMLR
 
 from .infer import SVIHandler, MCMCHandler
 from .infer import InferSVI, InferMCMC, InferFullRank, InferMAP, InferNUTS

@@ -31,16 +31,18 @@ class HierFrequencies(DataSpec):
             for _, group in grouped
         ]
 
+        self.seq_counts = np.stack(
+            [g.seq_counts for g in self.groups], axis=-1
+        )
+
     def make_data_dict(self, data: Optional[dict] = None) -> dict:
         if data is None:
             data = dict()
         data["seq_counts"] = np.stack(
-            [g.seq_counts for g in self.groups],
-            axis=-1
+            [g.seq_counts for g in self.groups], axis=-1
         )
         data["N"] = np.stack(
-            [g.seq_counts.sum(axis=-1) for g in self.groups],
-            axis=-1
+            [g.seq_counts.sum(axis=-1) for g in self.groups], axis=-1
         )
         data["var_names"] = self.var_names
         return data
