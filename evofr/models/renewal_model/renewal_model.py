@@ -1,11 +1,13 @@
 import jax.numpy as jnp
 
+from evofr.models.model_spec import ModelSpec
+
 from .model_options import GARW, FixedGA, FreeGrowth
 from .model_factories import _renewal_model_factory
 from .splines import Spline
 
-# We'll want to replace spline parameters with a basic object which can return multiple bases
-class RenewalModel:
+# We'll want to replace spline parameters with a basis object which can return multiple bases
+class RenewalModel(ModelSpec):
     def __init__(
         self,
         g,
