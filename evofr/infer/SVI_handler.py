@@ -1,8 +1,10 @@
+from typing import Callable, Optional
 from jax import random, lax
 from jax import jit
 import jax.example_libraries.optimizers as optimizers
 
 from numpyro.infer import SVI, Predictive, Trace_ELBO
+from numpyro.infer.autoguide import AutoGuide
 from numpyro.infer.svi import SVIState
 
 import pickle
@@ -13,20 +15,18 @@ class SVIHandler:
         self, rng_key=1, loss=Trace_ELBO(num_particles=2), optimizer=None
     ):
         self.rng_key = random.PRNGKey(rng_key)
-        self.loss = loss
+        self.loss_fn = loss
         self.optimizer = optimizer
-
-        self.svi = None
         self.svi_state = None
 
-    def init_svi(self, model, guide, data):
-        self.svi = SVI(model, guide, self.optimizer, self.loss)
+    def init_svi(self, model: Callable, guide: AutoGuide, data: dict):
+        self.svi = SVI(model, guide, self.optimizer, self.loss_fn)
         svi_state = self.svi.init(self.rng_key, **data)
         if self.svi_state is None:
             self.svi_state = svi_state
         return self
 
-    def _fit(self, data, n_epochs):
+    def _fit(self, data: dict, n_epochs: int):
         @jit
         def train(svi_state, n_epochs):
             def _train_single(_, val):
@@ -39,23 +39,26 @@ class SVIHandler:
         loss, self.svi_state = train(self.svi_state, n_epochs)
         return loss
 
-    def fit(self, model, guide, data, n_epochs, log_each=10000):
+    def fit(self, model: Callable, guide: AutoGuide, data: dict, n_epochs: int, log_each: Optional[int]=None):
         self.init_svi(model, guide, data)
-        if log_each == 0:
+        self.loss = []
+        if log_each is None or log_each == 0:
             self._fit(data, n_epochs)
         else:
             this_loss = self.svi.evaluate(self.svi_state, **data)
 
-            # Can this be done in a while loop?
             this_epoch = 0
             print(f"Epoch: {this_epoch}. Loss: {this_loss}")
             for _ in range(n_epochs // log_each):
                 this_epoch += log_each
-                this_loss = self._fit(data, n_epochs)
+                this_loss = self._fit(data, log_each)
                 print(f"Epoch: {this_epoch}. Loss: {this_loss}")
+                self.loss.append(this_loss)
             if n_epochs % log_each:
                 this_epoch += n_epochs % log_each
                 this_loss = self._fit(data, n_epochs % log_each)
+                print(f"Epoch: {this_epoch}. Loss: {this_loss}")
+                self.loss.append(this_loss)
         loss = self.svi.evaluate(self.svi_state, **data)
         self.rng_key = self.svi_state.rng_key
         return loss
@@ -80,7 +83,7 @@ class SVIHandler:
         return {**samples, **samples_pred}
 
     def reset_state(self):
-        return SVIHandler(self.rng_key, self.loss, self.optimizer)
+        return SVIHandler(self.rng_key, self.loss_fn, self.optimizer)
 
     # Optim state contains number of iterations and current state
     @property

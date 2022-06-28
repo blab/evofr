@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Type
 from evofr.data.data_spec import DataSpec
 from evofr.models.model_spec import ModelSpec
 from evofr.posterior.posterior_handler import PosteriorHandler
@@ -10,7 +10,7 @@ from numpyro.infer.autoguide import AutoDelta, AutoMultivariateNormal
 
 class InferSVI:
     def __init__(
-        self, iters: int, lr: float, num_samples: int, guide_fn: AutoGuide
+        self, iters: int, lr: float, num_samples: int, guide_fn: Type[AutoGuide]
     ):
         self.iters = iters
         self.num_samples = num_samples
@@ -18,7 +18,11 @@ class InferSVI:
         self.guide_fn = guide_fn
 
     def fit(
-        self, model: ModelSpec, data: DataSpec, name: Optional[str] = None
+        self,
+        model: ModelSpec,
+        data: DataSpec,
+        name: Optional[str] = None,
+        log_each: Optional[int] = None,
     ) -> PosteriorHandler:
         # Create and augment data dictionary
         input = data.make_data_dict()
@@ -28,7 +32,7 @@ class InferSVI:
         guide = self.guide_fn(model.model_fn)
 
         # Fit model and retrieve samples
-        self.handler.fit(model.model_fn, guide, input, self.iters)
+        self.handler.fit(model.model_fn, guide, input, self.iters, log_each=log_each)
         dataset = self.handler.predict(
             model.model_fn, guide, input, num_samples=self.num_samples
         )
@@ -38,6 +42,11 @@ class InferSVI:
             name = ""
         self.posterior = PosteriorHandler(dataset=dataset, data=data, name="")
         return self.posterior
+
+    @property
+    def loss(self):
+        if self.handler and self.handler.loss:
+            return self.handler.loss
 
 
 class InferMAP(InferSVI):
