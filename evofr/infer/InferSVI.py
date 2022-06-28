@@ -10,7 +10,11 @@ from numpyro.infer.autoguide import AutoDelta, AutoMultivariateNormal
 
 class InferSVI:
     def __init__(
-        self, iters: int, lr: float, num_samples: int, guide_fn: Type[AutoGuide]
+        self,
+        iters: int,
+        lr: float,
+        num_samples: int,
+        guide_fn: Type[AutoGuide],
     ):
         self.iters = iters
         self.num_samples = num_samples
@@ -22,7 +26,6 @@ class InferSVI:
         model: ModelSpec,
         data: DataSpec,
         name: Optional[str] = None,
-        log_each: Optional[int] = None,
     ) -> PosteriorHandler:
         # Create and augment data dictionary
         input = data.make_data_dict()
@@ -32,21 +35,17 @@ class InferSVI:
         guide = self.guide_fn(model.model_fn)
 
         # Fit model and retrieve samples
-        self.handler.fit(model.model_fn, guide, input, self.iters, log_each=log_each)
+        self.handler.fit(model.model_fn, guide, input, self.iters)
         dataset = self.handler.predict(
             model.model_fn, guide, input, num_samples=self.num_samples
         )
+        dataset["losses"] = self.handler.losses
 
         # Create object to hold posterior samples and data
         if name is None:
             name = ""
-        self.posterior = PosteriorHandler(dataset=dataset, data=data, name="")
+        self.posterior = PosteriorHandler(dataset=dataset, data=data, name=name)
         return self.posterior
-
-    @property
-    def loss(self):
-        if self.handler and self.handler.loss:
-            return self.handler.loss
 
 
 class InferMAP(InferSVI):
