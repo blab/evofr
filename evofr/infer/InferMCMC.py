@@ -1,13 +1,16 @@
-from typing import Optional
+from typing import Optional, Type
+
 from evofr.data.data_spec import DataSpec
 from evofr.models.model_spec import ModelSpec
 from .MCMC_handler import MCMCHandler
 from evofr.posterior.posterior_handler import PosteriorHandler
 from numpyro.infer import NUTS
-
+from numpyro.infer.mcmc import MCMCKernel
 
 class InferMCMC:
-    def __init__(self, num_warmup: int, num_samples: int, kernel):
+    def __init__(
+        self, num_warmup: int, num_samples: int, kernel: Type[MCMCKernel]
+    ):
         self.num_warmup = num_warmup
         self.num_samples = num_samples
         self.handler = MCMCHandler(kernel=kernel)
