@@ -5,16 +5,16 @@ from evofr.posterior.posterior_helpers import get_median, get_quantiles
 
 
 def prep_posterior_for_plot(
-    var, dataset, ps: List[float], forecast: Optional[bool] = False
+    var, samples, ps: List[float], forecast: Optional[bool] = False
 ):
     """
     Prep posteriors for plotting by finding time span, medians, and quantiles.
     """
-    med, quants = get_quantiles(dataset, ps, var)
+    med, quants = get_quantiles(samples, ps, var)
     t = jnp.arange(0, med.shape[0], 1)
 
     if forecast:
-        med_f, quants_f = get_quantiles(dataset, ps, var + "_forecast")
+        med_f, quants_f = get_quantiles(samples, ps, var + "_forecast")
         t_f = med.shape[0] + jnp.arange(0, med_f.shape[0], 1)
         t = jnp.concatenate((t, t_f))
         med = jnp.concatenate((med, med_f))
@@ -56,14 +56,14 @@ def plot_posterior_time(
 
 def plot_R(
     ax,
-    dataset,
+    samples,
     ps: List[float],
     alphas: List[float],
     colors: List[str],
     forecast: Optional[bool] = False,
 ):
     t, med, quants = prep_posterior_for_plot(
-        "R", dataset, ps, forecast=forecast
+        "R", samples, ps, forecast=forecast
     )
     ax.axhline(y=1.0, color="k", linestyle="--")
     plot_posterior_time(ax, t, med, quants, alphas, colors)
@@ -71,7 +71,7 @@ def plot_R(
 
 def plot_R_censored(
     ax,
-    dataset,
+    samples,
     ps: List[float],
     alphas: List[float],
     colors: List[str],
@@ -79,13 +79,13 @@ def plot_R_censored(
     thres: Optional[float] = 0.001,
 ):
     t, med, quants = prep_posterior_for_plot(
-        "R", dataset, ps, forecast=forecast
+        "R", samples, ps, forecast=forecast
     )
     ax.axhline(y=1.0, color="k", linestyle="--")
 
     # Plot only variants at high enough frequency
     _, freq_median, _ = prep_posterior_for_plot(
-        "freq", dataset, ps, forecast=forecast
+        "freq", samples, ps, forecast=forecast
     )
     included = freq_median > thres
 
@@ -93,9 +93,9 @@ def plot_R_censored(
 
 
 def plot_posterior_average_R(
-    ax, dataset, ps: List[float], alphas: List[float], color: str
+    ax, samples, ps: List[float], alphas: List[float], color: str
 ):
-    med, V = get_quantiles(dataset, ps, "R_ave")
+    med, V = get_quantiles(samples, ps, "R_ave")
     t = jnp.arange(0, V[-1].shape[-1], 1)
 
     # Make figure
@@ -109,7 +109,7 @@ def plot_posterior_average_R(
 
 def plot_little_r_censored(
     ax,
-    dataset,
+    samples,
     ps: List[float],
     alphas: List[float],
     colors: List[str],
@@ -117,13 +117,13 @@ def plot_little_r_censored(
     thres: Optional[float] = 0.001,
 ):
     t, med, quants = prep_posterior_for_plot(
-        "r", dataset, ps, forecast=forecast
+        "r", samples, ps, forecast=forecast
     )
     ax.axhline(y=0.0, color="k", linestyle="--")
 
     # Plot only variants at high enough frequency
     _, freq_median, _ = prep_posterior_for_plot(
-        "freq", dataset, ps, forecast=forecast
+        "freq", samples, ps, forecast=forecast
     )
     included = freq_median > thres
 
@@ -132,14 +132,14 @@ def plot_little_r_censored(
 
 def plot_posterior_frequency(
     ax,
-    dataset,
+    samples,
     ps: List[float],
     alphas: List[float],
     colors: List[str],
     forecast: Optional[bool] = False,
 ):
     t, med, quants = prep_posterior_for_plot(
-        "freq", dataset, ps, forecast=forecast
+        "freq", samples, ps, forecast=forecast
     )
     plot_posterior_time(ax, t, med, quants, alphas, colors)
 
@@ -172,22 +172,22 @@ def plot_observed_frequency_size(ax, LD, colors: List[str], size: Callable):
 
 def plot_posterior_I(
     ax,
-    dataset,
+    samples,
     ps: List[float],
     alphas: List[float],
     colors: List[str],
     forecast: Optional[bool] = False,
 ):
     t, med, quants = prep_posterior_for_plot(
-        "I_smooth", dataset, ps, forecast=forecast
+        "I_smooth", samples, ps, forecast=forecast
     )
     plot_posterior_time(ax, t, med, quants, alphas, colors)
 
 
 def plot_posterior_smooth_EC(
-    ax, dataset, ps: List[float], alphas: List[float], color: str
+    ax, samples, ps: List[float], alphas: List[float], color: str
 ):
-    med, V = get_quantiles(dataset, ps, "total_smooth_prev")
+    med, V = get_quantiles(samples, ps, "total_smooth_prev")
     t = jnp.arange(0, V[-1].shape[-1], 1)
 
     # Make figure
@@ -226,9 +226,9 @@ def add_dates_sep(ax, dates, sep=7):
 
 
 def plot_growth_advantage(
-    ax, dataset, LD, ps: List[float], alphas: List[float], colors: List[str]
+    ax, samples, LD, ps: List[float], alphas: List[float], colors: List[str]
 ):
-    ga = jnp.array(dataset["ga"])
+    ga = jnp.array(samples["ga"])
 
     inds = jnp.arange(0, ga.shape[-1], 1)
 
@@ -272,10 +272,10 @@ def plot_total_by_obs_frequency(ax, LD, total, colors: List[str]):
         bottom = obs_freq[:, variant] * total + bottom
 
 
-def plot_total_by_median_frequency(ax, dataset, LD, total, colors: List[str]):
+def plot_total_by_median_frequency(ax, samples, LD, total, colors: List[str]):
     T, D = LD.seq_counts.shape
     t = jnp.arange(0, T, 1)
-    med_freq = get_median(dataset, "freq")
+    med_freq = get_median(samples, "freq")
 
     # Make figure
     bottom = jnp.zeros(t.shape)
@@ -291,7 +291,7 @@ def plot_total_by_median_frequency(ax, dataset, LD, total, colors: List[str]):
 
 def plot_ppc_frequency(
     ax,
-    dataset,
+    samples,
     LD,
     ps: List[float],
     alphas: List[float],
@@ -300,7 +300,7 @@ def plot_ppc_frequency(
 ):
     N = LD.seq_counts.sum(axis=-1)
     t, med, quants = prep_posterior_for_plot(
-        "seq_counts", dataset, ps, forecast=forecast
+        "seq_counts", samples, ps, forecast=forecast
     )
     med = med / N[:, None]
     quants = [q / N[:, None] for q in quants]
@@ -309,22 +309,22 @@ def plot_ppc_frequency(
 
 def plot_ppc_seq_counts(
     ax,
-    dataset,
+    samples,
     ps: List[float],
     alphas: List[float],
     colors: List[str],
     forecast: Optional[bool] = False,
 ):
     t, med, quants = prep_posterior_for_plot(
-        "seq_counts", dataset, ps, forecast=forecast
+        "seq_counts", samples, ps, forecast=forecast
     )
     plot_posterior_time(ax, t, med, quants, alphas, colors)
 
 
 def plot_ppc_cases(
-    ax, dataset, ps: List[float], alphas: List[float], color: str
+    ax, samples, ps: List[float], alphas: List[float], color: str
 ):
-    med, V = get_quantiles(dataset, ps, "cases")
+    med, V = get_quantiles(samples, ps, "cases")
     t = jnp.arange(0, V[-1].shape[-1], 1)
 
     # Make figure

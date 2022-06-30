@@ -36,15 +36,15 @@ class InferSVI:
 
         # Fit model and retrieve samples
         self.handler.fit(model.model_fn, guide, input, self.iters)
-        dataset = self.handler.predict(
+        samples = self.handler.predict(
             model.model_fn, guide, input, num_samples=self.num_samples
         )
-        dataset["losses"] = self.handler.losses
+        samples["losses"] = self.handler.losses
 
         # Create object to hold posterior samples and data
         if name is None:
             name = ""
-        self.posterior = PosteriorHandler(dataset=dataset, data=data, name=name)
+        self.posterior = PosteriorHandler(samples=samples, data=data, name=name)
         return self.posterior
 
 

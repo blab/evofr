@@ -2,24 +2,24 @@ import jax.numpy as jnp
 from evofr.data import expand_dates
 
 
-def get_quantile(dataset, p, site):
+def get_quantile(samples, p, site):
     q = jnp.array([0.5 * (1 - p), 0.5 * (1 + p)])
-    return jnp.quantile(dataset[site], q=q, axis=0)
+    return jnp.quantile(samples[site], q=q, axis=0)
 
 
-def get_median(dataset: dict, site):
-    return jnp.median(dataset[site], axis=0)
+def get_median(samples: dict, site):
+    return jnp.median(samples[site], axis=0)
 
 
-def get_quantiles(dataset, ps, site):
+def get_quantiles(samples, ps, site):
     quants = []
     for i in range(len(ps)):
-        quants.append(get_quantile(dataset, ps[i], site))
-    med = get_median(dataset, site)
+        quants.append(get_quantile(samples, ps[i], site))
+    med = get_median(samples, site)
     return med, quants
 
 
-def get_site_by_variant(dataset, data, ps, name, site, forecast=False):
+def get_site_by_variant(samples, data, ps, name, site, forecast=False):
 
     # Unpack variant info
     var_names = data.var_names
@@ -27,7 +27,7 @@ def get_site_by_variant(dataset, data, ps, name, site, forecast=False):
 
     # Unpack posterior
     site_name = site + "_forecast" if forecast else site
-    site = dataset[site_name]
+    site = samples[site_name]
     N_variant = site.shape[-1]
     T = site.shape[-2]
 
@@ -66,7 +66,7 @@ def get_site_by_variant(dataset, data, ps, name, site, forecast=False):
     return site_dict
 
 
-def get_freq(dataset, LD, ps, name, forecast=False):
+def get_freq(samples, LD, ps, name, forecast=False):
     return get_site_by_variant(
-        dataset, LD, ps, name, "freq", forecast=forecast
+        samples, LD, ps, name, "freq", forecast=forecast
     )

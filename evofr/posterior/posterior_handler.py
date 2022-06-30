@@ -7,29 +7,29 @@ from evofr.data.data_spec import DataSpec
 class PosteriorHandler:
     def __init__(
         self,
-        dataset: Optional[Dict] = None,
+        samples: Optional[Dict] = None,
         data: Optional[DataSpec] = None,
         name: Optional[str] = None,
     ):
-        self.dataset = dataset
+        self.samples = samples
         self.data = data
         self.name = name
 
     def save_posterior(self, filepath: str):
-        if self.dataset is not None:
+        if self.samples is not None:
             with open(filepath, "w") as file:
-                json.dump(self.dataset, file)
+                json.dump(self.samples, file)
 
     def load_posterior(self, filepath: str):
         with open(filepath, "w") as file:
-            self.dataset = json.load(file)
+            self.samples = json.load(file)
 
     def unpack_posterior(self):
-        return self.dataset, self.data
+        return self.samples, self.data
 
     def get_site(self, site: str):
-        if self.dataset:
-            return self.dataset[site]
+        if self.samples:
+            return self.samples[site]
 
     def get_data_dict(self):
         if not self.data_dict and self.data:

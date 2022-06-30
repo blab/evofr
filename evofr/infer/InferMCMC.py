@@ -26,12 +26,12 @@ class InferMCMC:
         self.handler.fit(
             model.model_fn, input, self.num_warmup, self.num_samples
         )
-        dataset = self.handler.predict(model.model_fn, input)
+        samples = self.handler.predict(model.model_fn, input)
 
         # Create object to hold posterior samples and data
         if name is None:
             name = ""
-        self.posterior = PosteriorHandler(dataset=dataset, data=data, name="")
+        self.posterior = PosteriorHandler(samples=samples, data=data, name="")
         return self.posterior
 
 
