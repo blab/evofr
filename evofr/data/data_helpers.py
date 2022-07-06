@@ -21,6 +21,13 @@ def prep_dates(raw_dates: pd.Series):
 #         dates_f.append(last_date + datetime.timedelta(days=d + 1))
 #     return dates_f
 
+def forecast_dates(dates, T_forecast):
+    last_date = dates[-1]
+    dates_f = []
+    for d in range(T_forecast):
+        dates_f.append(last_date + datetime.timedelta(days=d + 1))
+    return dates_f
+
 
 def expand_dates(dates, T_forecast: int):
     x_dates = dates.copy()

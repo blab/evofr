@@ -1,5 +1,7 @@
+from typing import Dict, List
 import jax.numpy as jnp
-from evofr.data import expand_dates
+from evofr.data import forecast_dates
+from evofr.data import DataSpec
 
 
 def get_quantile(samples, p, site):
@@ -19,7 +21,9 @@ def get_quantiles(samples, ps, site):
     return med, quants
 
 
-def get_site_by_variant(samples, data, ps, name, site, forecast=False):
+def get_site_by_variant(
+    samples: Dict, data: DataSpec, ps, name, site, forecast=False
+):
 
     # Unpack variant info
     var_names = data.var_names
@@ -32,7 +36,7 @@ def get_site_by_variant(samples, data, ps, name, site, forecast=False):
     T = site.shape[-2]
 
     if forecast:
-        dates = expand_dates(dates, T)
+        dates = forecast_dates(dates, T)
 
     # Compute medians and hdis for ps
     site_median = jnp.median(site, axis=0)
@@ -66,7 +70,7 @@ def get_site_by_variant(samples, data, ps, name, site, forecast=False):
     return site_dict
 
 
-def get_freq(samples, LD, ps, name, forecast=False):
+def get_freq(samples: Dict, data: DataSpec, ps, name, forecast=False):
     return get_site_by_variant(
-        samples, LD, ps, name, "freq", forecast=forecast
+        samples, data, ps, name, "freq", forecast=forecast
     )
