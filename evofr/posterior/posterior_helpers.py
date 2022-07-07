@@ -74,3 +74,40 @@ def get_freq(samples: Dict, data: DataSpec, ps, name, forecast=False):
     return get_site_by_variant(
         samples, data, ps, name, "freq", forecast=forecast
     )
+
+
+def get_sites_quantiles_json(
+    samples: Dict, data: DataSpec, sites: List[str], ps
+):
+    export_dict = dict()
+
+    # Save common attributes at highest level
+    export_dict["ps"] = ps
+    export_dict["sites"] = sites
+
+    # Names from dataspec
+    export_dict["dates"] = data.dates
+    export_dict["variants"] = data.var_names
+
+    # Each site has sub-dict with its info
+    for site in sites:
+        site_dict = dict()
+        site_samples = samples[f"{site}"]
+
+        # Get median
+        site_dict["median"] = jnp.median(site_samples, axis=0)
+
+        # Get ps
+        for i, p in enumerate(ps):
+            q = jnp.array(
+                [0.5 * (1 - p), 0.5 * (1 + p)]
+            )  # Upper and lower bound
+            site_dict[f"HDI_{round(ps[i] * 100)}"] = jnp.quantile(
+                site_samples,
+                q=q,
+                axis=0,
+            )
+
+        # Make site dict in dit
+        export_dict[site] = site_dict
+    return export_dict
