@@ -58,3 +58,6 @@ class MultiPosterior:
 
     def get(self, name):
         return self.locator[name]
+
+    def __getitem__(self, name: str):
+        return self.get(name)
