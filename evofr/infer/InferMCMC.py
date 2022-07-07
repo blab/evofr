@@ -31,7 +31,7 @@ class InferMCMC:
         # Create object to hold posterior samples and data
         if name is None:
             name = ""
-        self.posterior = PosteriorHandler(samples=samples, data=data, name="")
+        self.posterior = PosteriorHandler(samples=samples, data=data, name=name)
         return self.posterior
 
 
