@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from evofr.models.model_spec import ModelSpec
 
 from .model_factories import _spline_incidence_model_factory
-from .splines import Spline, SplineDeriv
+from .basis_functions import Spline, SplineDeriv
 
 
 class SplineIncidenceModel(ModelSpec):

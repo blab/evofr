@@ -1,24 +1,24 @@
+from typing import List, Optional
 import jax.numpy as jnp
 
 from evofr.models.model_spec import ModelSpec
-
-from .model_options import GARW, FixedGA, FreeGrowth
+from .basis_functions import BasisFunction, Spline
 from .model_factories import _renewal_model_factory
-from .splines import Spline
 
-# We'll want to replace spline parameters with a basis object which can return multiple bases
+
 class RenewalModel(ModelSpec):
     def __init__(
         self,
         g,
         delays,
-        seed_L,
-        forecast_L,
-        k=None,
+        seed_L: int,
+        forecast_L: int,
+        k: Optional[int] = None,
         RLik=None,
         CLik=None,
         SLik=None,
-        v_names=None,
+        v_names: Optional[List[str]] = None,
+        basis_fn: Optional[BasisFunction] = None,
     ):
         self.g_rev = jnp.flip(g, axis=-1)
         self.delays = delays
@@ -26,10 +26,13 @@ class RenewalModel(ModelSpec):
         self.forecast_L = forecast_L
         self.v_names = v_names
 
-        if k is None:
-            k = 20
-        self.k = k
+        # Making basis expansion for Rt
+        self.k = k if k else 10
+        self.basis_fn = (
+            basis_fn if basis_fn else Spline(s=None, order=4, k=self.k)
+        )
 
+        # Defining model likelihoods
         self.RLik = RLik
         self.CLik = CLik
         self.SLik = SLik
@@ -47,35 +50,6 @@ class RenewalModel(ModelSpec):
             self.v_names,
         )
 
-    def augment_data(self, data, order=4):
-        T = len(data["cases"])
-        s = jnp.linspace(0, T, self.k)
-        data["X"] = Spline.matrix(jnp.arange(T), s, order=order)
-
-
-class GARandomWalkModel(RenewalModel):
-    def __init__(
-        self, g, delays, seed_L, forecast_L, k=None, CLik=None, SLik=None
-    ):
-        super().__init__(g, delays, seed_L, forecast_L, k, GARW(), CLik, SLik)
-        super().make_model()
-
-
-class FreeGrowthModel(RenewalModel):
-    def __init__(
-        self, g, delays, seed_L, forecast_L, k=None, CLik=None, SLik=None
-    ):
-        super().__init__(
-            g, delays, seed_L, forecast_L, k, FreeGrowth(), CLik, SLik
-        )
-        super().make_model()
-
-
-class FixedGrowthModel(RenewalModel):
-    def __init__(
-        self, g, delays, seed_L, forecast_L, k=None, CLik=None, SLik=None
-    ):
-        super().__init__(
-            g, delays, seed_L, forecast_L, k, FixedGA(), CLik, SLik
-        )
-        super().make_model()
+    def augment_data(self, data):
+        # Add feature matrix for parameterization of R
+        data["X"] = self.basis_fn.make_features(data)
