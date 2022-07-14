@@ -19,7 +19,7 @@ class HSGaussianProcess(BasisFunction):
 
     @staticmethod
     def phi(L: float, m: int, x: float):
-        arg = m * jnp.pi * x / (2 * L)
+        arg = m * jnp.pi * (x + L) / (2 * L)
         return jnp.power(L, -0.5) * jnp.sin(arg)
 
     @staticmethod
