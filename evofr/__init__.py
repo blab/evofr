@@ -1,6 +1,7 @@
 from .data import DataSpec
 from .data import CaseCounts, VariantFrequencies, CaseFrequencyData
 from .data import HierCases, HierFrequencies, HierarchicalCFData
+from .data.data_helpers import *
 
 from .models import ModelSpec
 from .models import MultinomialLogisticRegression, HierMLR
