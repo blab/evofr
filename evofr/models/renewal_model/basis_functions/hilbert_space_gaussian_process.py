@@ -10,6 +10,7 @@ class HSGaussianProcess(BasisFunction):
     """
     Implementation of basis approximation to Gaussian processes.
     """
+
     def __init__(self):
         pass
 
@@ -19,8 +20,9 @@ class HSGaussianProcess(BasisFunction):
 
     @staticmethod
     def phi(L: float, m: int, x: float):
-        arg = m * jnp.pi * (x + L) / (2 * L)
-        return jnp.power(L, -0.5) * jnp.sin(arg)
+        lam = HSGaussianProcess.lam(L, m)
+        arg = jnp.sqrt(lam) * (x + L)
+        return jnp.sqrt(1 / L) * jnp.sin(arg)
 
     @staticmethod
     def phi_matrix(L: float, m: int, x: float):
@@ -46,10 +48,10 @@ class SquaredExponential(HSGaussianProcess):
     @staticmethod
     def spd(alpha: float, rho: float, w: float):
         return (
-            jnp.square(alpha)
+            alpha
             * jnp.sqrt(2 * jnp.pi)
             * rho
-            * jnp.exp(-0.5 * jnp.square(rho * w))
+            * jnp.exp(-0.5 * jnp.square(rho) * jnp.square(w))
         )
 
     def make_features(self, data: dict) -> DeviceArray:
@@ -99,8 +101,8 @@ class Matern(HSGaussianProcess):
             * jnp.power(2 * nu, nu)
             / (gammanu * jnp.power(rho, 2 * nu))
         )
-        base = 2 * nu / jnp.square(rho) + 4 * jnp.square(jnp.pi * w)
-        expon = -(nu + 0.5)
+        base = 2 * nu * jnp.power(rho, -2) + 4 * jnp.square(jnp.pi * w)
+        expon = -nu - 0.5
         return coef * jnp.power(base, expon)
 
     def make_features(self, data: dict) -> DeviceArray:
