@@ -46,9 +46,12 @@ class Spline(BasisFunction):
         )  # Make spline basis
         return X.T
 
-    def make_features(self, data: dict) -> DeviceArray:
+    def make_features(
+        self, data: dict, T: Optional[float] = None
+    ) -> DeviceArray:
         # Check for maximum time
-        T = data["N"].shape[0]
+        if T is None:
+            T = data["N"].shape[0]
 
         # If pivots not defined, make self.k equally spaced splines
         if self.s is None and self.k:
