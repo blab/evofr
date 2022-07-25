@@ -2,6 +2,7 @@ import json
 from typing import Dict, List, Optional
 
 from evofr.data.data_spec import DataSpec
+from evofr.posterior.posterior_helpers import EvofrEncoder
 
 
 class PosteriorHandler:
@@ -18,7 +19,7 @@ class PosteriorHandler:
     def save_posterior(self, filepath: str):
         if self.samples is not None:
             with open(filepath, "w") as file:
-                json.dump(self.samples, file)
+                json.dump(self.samples, file, cls=EvofrEncoder)
 
     def load_posterior(self, filepath: str):
         with open(filepath, "w") as file:
