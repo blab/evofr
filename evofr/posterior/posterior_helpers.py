@@ -79,6 +79,50 @@ def get_freq(samples: Dict, data: DataSpec, ps, name, forecast=False):
     )
 
 
+def get_growth_advantage(samples, data, ps, name, rel_to="other"):
+    # Unpack variant info
+    var_names = data.var_names
+
+    # Get posterior samples
+    ga = samples["ga"]
+    ga = jnp.concatenate((ga, jnp.ones(ga.shape[0])[:, None]), axis=1)
+    N_variant = ga.shape[-1]
+
+    # Loop over ga and make relative rel_to
+    for i, s in enumerate(var_names):
+        if s == rel_to:
+            ga = jnp.divide(ga, ga[:, i][:, None])
+
+    # Compute medians and quantiles
+    meds = jnp.median(ga, axis=0)
+    gas = []
+    for i, p in enumerate(ps):
+        up = 0.5 + p / 2
+        lp = 0.5 - p / 2
+        gas.append(jnp.quantile(ga, jnp.array([lp, up]), axis=0).T)
+
+    # Make empty dictionary
+    v_dict = dict()
+    v_dict["location"] = []
+    v_dict["variant"] = []
+    v_dict["median_ga"] = []
+
+    for p in ps:
+        v_dict[f"ga_upper_{round(p * 100)}"] = []
+        v_dict[f"ga_lower_{round(p * 100)}"] = []
+
+    for variant in range(N_variant):
+        if var_names[variant] != rel_to:
+            v_dict["location"].append(name)
+            v_dict["variant"].append(var_names[variant])
+            v_dict["median_ga"].append(meds[variant])
+            for i, p in enumerate(ps):
+                v_dict[f"ga_upper_{round(p * 100)}"].append(gas[i][variant, 1])
+                v_dict[f"ga_lower_{round(p * 100)}"].append(gas[i][variant, 0])
+
+    return v_dict
+
+
 class EvofrEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -135,6 +179,80 @@ def get_sites_quantiles_json(
                 q=q,
                 axis=0,
             )
+
+        # Make site dict in dict
+        export_dict[site] = site_dict
+    return export_dict
+
+
+def get_sites_variants_json(
+    samples: Dict,
+    data: DataSpec,
+    sites: List[str],
+    ps,
+    name: Optional[str] = None,
+):
+    export_dict = dict()
+
+    # Save common attributes at highest level
+
+    # Make keys for probability levels
+    ps_keys = ["median"]
+    for i, p in enumerate(ps):
+        ps_keys.append(f"HDI_{round(ps[i] * 100)}_upper")
+        ps_keys.append(f"HDI_{round(ps[i] * 100)}_lower")
+    export_dict["ps"] = ps_keys
+
+    export_dict["sites"] = sites
+    if name:
+        export_dict["location"] = name
+
+    # Names from dataspec
+    def add_dataspec_attr(
+        export_dict: dict, data, attr: str, key: Optional[str] = None
+    ) -> None:
+        key = key if key else attr
+        if hasattr(data, attr):
+            export_dict[key] = getattr(data, attr)
+        return None
+
+    add_dataspec_attr(export_dict, data, "dates", key="dates")
+    add_dataspec_attr(export_dict, data, "var_names", key="variants")
+    variants = export_dict["variants"]
+
+    # Each site has sub-dict with its info
+    for site in sites:
+        site_dict = dict()
+        site_samples = samples[f"{site}"]
+
+        for v, variant in enumerate(variants):
+            variant_dict = dict()
+
+            # Get median
+            variant_dict["median"] = jnp.median(
+                site_samples[:, v, ...], axis=0
+            )
+
+            # Get ps
+            for i, p in enumerate(ps):
+                q = jnp.array(
+                    [0.5 * (1 - p), 0.5 * (1 + p)]
+                )  # Upper and lower bound
+
+                # Get HDI Upper
+                variant_dict[f"HDI_{round(ps[i] * 100)}_upper"] = jnp.quantile(
+                    site_samples,
+                    q=q[1],
+                    axis=0,
+                )
+
+                # Get HDI Lower
+                variant_dict[f"HDI_{round(ps[i] * 100)}_lower"] = jnp.quantile(
+                    site_samples,
+                    q=q[0],
+                    axis=0,
+                )
+            site_dict[variant] = variant_dict
 
         # Make site dict in dict
         export_dict[site] = site_dict
