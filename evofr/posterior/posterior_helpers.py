@@ -223,14 +223,14 @@ def get_sites_variants_json(
     # Each site has sub-dict with its info
     for site in sites:
         site_dict = dict()
-        site_samples = samples[f"{site}"]
+        site_samples = samples[site]
 
         for v, variant in enumerate(variants):
             variant_dict = dict()
 
             # Get median
             variant_dict["median"] = jnp.median(
-                site_samples[:, v, ...], axis=0
+                site_samples[:, :, v, ...], axis=0
             )
 
             # Get ps
@@ -241,14 +241,14 @@ def get_sites_variants_json(
 
                 # Get HDI Upper
                 variant_dict[f"HDI_{round(ps[i] * 100)}_upper"] = jnp.quantile(
-                    site_samples,
+                    site_samples[:, :, v, ...],
                     q=q[1],
                     axis=0,
                 )
 
                 # Get HDI Lower
                 variant_dict[f"HDI_{round(ps[i] * 100)}_lower"] = jnp.quantile(
-                    site_samples,
+                    site_samples[:, :,  v, ...],
                     q=q[0],
                     axis=0,
                 )
