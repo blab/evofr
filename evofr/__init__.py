@@ -16,6 +16,7 @@ from .posterior import (
     get_site_by_variant,
     get_freq,
     get_sites_quantiles_json,
+    get_sites_variants_json.
     EvofrEncoder,
     save_json,
 )
