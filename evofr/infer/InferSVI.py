@@ -2,7 +2,9 @@ from typing import Optional, Type
 from evofr.data.data_spec import DataSpec
 from evofr.models.model_spec import ModelSpec
 from evofr.posterior.posterior_handler import PosteriorHandler
+import jax.numpy as jnp
 from .SVI_handler import SVIHandler
+from numpyro.infer import init_to_value
 from numpyro.optim import Adam
 from numpyro.infer.autoguide import AutoGuide
 from numpyro.infer.autoguide import AutoDelta, AutoMultivariateNormal
@@ -44,7 +46,9 @@ class InferSVI:
         # Create object to hold posterior samples and data
         if name is None:
             name = ""
-        self.posterior = PosteriorHandler(samples=samples, data=data, name=name)
+        self.posterior = PosteriorHandler(
+            samples=samples, data=data, name=name
+        )
         return self.posterior
 
 
@@ -56,3 +60,24 @@ class InferMAP(InferSVI):
 class InferFullRank(InferSVI):
     def __init__(self, iters: int, lr: float, num_samples: int):
         super().__init__(iters, lr, num_samples, AutoMultivariateNormal)
+
+
+def init_to_MAP(
+    model: ModelSpec,
+    data: DataSpec,
+    iters: int = 10_000,
+    lr: float = 4e-3,
+):
+    """
+    Initilization strategy for MCMC.
+    Estimates MAP for given model and data.
+    Returns initilization strategy and MAP estimates.
+    """
+
+    # Fit MAP with given model and data
+    infer_map = InferMAP(iters=iters, lr=lr)
+    MAP = infer_map.fit(model, data)
+
+    # Return initilization strategy for MCMC and MAP estimates
+    samples = {k: jnp.squeeze(v) for k, v in MAP.samples.items()}
+    return init_to_value(values=samples), MAP

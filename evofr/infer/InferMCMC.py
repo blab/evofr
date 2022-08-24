@@ -7,13 +7,18 @@ from evofr.posterior.posterior_handler import PosteriorHandler
 from numpyro.infer import NUTS
 from numpyro.infer.mcmc import MCMCKernel
 
+
 class InferMCMC:
     def __init__(
-        self, num_warmup: int, num_samples: int, kernel: Type[MCMCKernel]
+        self,
+        num_warmup: int,
+        num_samples: int,
+        kernel: Type[MCMCKernel],
+        **kernel_kwargs
     ):
         self.num_warmup = num_warmup
         self.num_samples = num_samples
-        self.handler = MCMCHandler(kernel=kernel)
+        self.handler = MCMCHandler(kernel=kernel, **kernel_kwargs)
 
     def fit(
         self, model: ModelSpec, data: DataSpec, name: Optional[str] = None
@@ -29,12 +34,14 @@ class InferMCMC:
         samples = self.handler.predict(model.model_fn, input)
 
         # Create object to hold posterior samples and data
-        if name is None:
-            name = ""
-        self.posterior = PosteriorHandler(samples=samples, data=data, name=name)
+        self.posterior = PosteriorHandler(
+            samples=samples, data=data, name=name if name else ""
+        )
         return self.posterior
 
 
 class InferNUTS(InferMCMC):
-    def __init__(self, num_warmup: int, num_samples: int):
-        super().__init__(num_warmup, num_samples, NUTS)
+    def __init__(self, num_warmup: int, num_samples: int, **kernel_kwargs):
+        super().__init__(
+            num_warmup, num_samples, NUTS, **kernel_kwargs
+        )

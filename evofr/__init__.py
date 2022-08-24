@@ -8,7 +8,7 @@ from .models import MultinomialLogisticRegression, HierMLR
 from .models.renewal_model import *
 
 from .infer import SVIHandler, MCMCHandler
-from .infer import InferSVI, InferMCMC, InferFullRank, InferMAP, InferNUTS
+from .infer import InferSVI, InferMCMC, InferFullRank, InferMAP, InferNUTS, init_to_MAP
 
 from .posterior import PosteriorHandler, MultiPosterior
 from .posterior import get_median, get_quantile, get_quantiles

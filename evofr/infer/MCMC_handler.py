@@ -16,7 +16,7 @@ class MCMCHandler:
         if kernel is None:
             kernel = NUTS
         self.rng_key = random.PRNGKey(rng_key)
-        self.kernel = kernel
+        self.kernel = kernel if kernel else NUTS
         self.kernel_kwargs = kernel_kwargs
         self.mcmc = None
 
@@ -38,10 +38,10 @@ class MCMCHandler:
         self.samples = self.mcmc.get_samples()
 
     @property
-    def params(self):
+    def params(self) -> Dict:
         if self.samples is not None:
             return self.samples
-        return None
+        return dict()
 
     def save_state(self, file_path):
         if self.samples is None:

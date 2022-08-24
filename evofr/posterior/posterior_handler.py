@@ -12,7 +12,7 @@ class PosteriorHandler:
         data: Optional[DataSpec] = None,
         name: Optional[str] = None,
     ):
-        self.samples = samples
+        self.samples = samples if samples else dict()
         self.data = data
         self.name = name
 
