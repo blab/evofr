@@ -12,6 +12,26 @@ class Spline(BasisFunction):
         order: Optional[int] = None,
         k: Optional[int] = None,
     ):
+        """Construct Spline class.
+
+        Parameters
+        ----------
+        s:
+            Optional knot points for spline basis.
+            Defaults to 'k' evenly spaced points if absent.
+
+        order:
+            Optional order for splines.
+            Defaults to 4 corresponding to cubic splines.
+
+        k:
+            Optional number of basis functions.
+            Must pass either 's' or 'k'.
+
+        Returns
+        -------
+        Spline
+        """
         self.s = s
         self.order = order if order else 4
         self.k = k  # Need to handle error if neither s and k are passed
@@ -40,6 +60,9 @@ class Spline(BasisFunction):
 
     @staticmethod
     def matrix(t, s, order):
+        """Construct matrix for spline of
+        order 'order' with knots 's' at points 't'.
+        """
         _s = jnp.pad(s, mode="edge", pad_width=(order - 1))  # Extend knots
         X = vmap(lambda i: Spline._basis(t, _s, order, i))(
             jnp.arange(0, len(s) + order - 2)
@@ -67,6 +90,27 @@ class SplineDeriv:
         order: Optional[int] = None,
         k: Optional[int] = None,
     ):
+        """Construct SplineDeriv class. Represents the derivative of the Spline class.
+
+        Parameters
+        ----------
+        s:
+            Optional knot points for spline basis.
+            Defaults to 'k' evenly spaced points if absent.
+
+        order:
+            Optional order for splines.
+            Defaults to 4 corresponding to cubic splines.
+
+        k:
+            Optional number of basis functions.
+            Must pass either 's' or 'k'.
+
+        Returns
+        -------
+        SplineDeriv
+        """
+
         self.s = s
         self.order = order if order else 4
         self.k = k  # Need to handle error if neither s and k are passed
@@ -95,6 +139,10 @@ class SplineDeriv:
 
     @staticmethod
     def matrix(t, s, order):
+        """Construct matrix for spline derivative of
+        order 'order' with knots 's' at points 't'.
+        """
+
         _s = jnp.pad(s, mode="edge", pad_width=(order - 1))  # Extend knots
         X = vmap(lambda i: SplineDeriv._basis(t, _s, order, i))(
             jnp.arange(0, len(s) + order - 2)

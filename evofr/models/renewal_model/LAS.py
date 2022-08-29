@@ -11,6 +11,7 @@ from numpyro.distributions.util import (
 
 
 class LaplaceRandomWalk(Distribution):
+    """Laplace random walk based on numpyro built in Gaussian Random Walk."""
     arg_constraints = {"scale": constraints.positive}
     support = constraints.real_vector
     reparametrized_params = ["scale"]

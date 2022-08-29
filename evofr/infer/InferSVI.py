@@ -18,6 +18,26 @@ class InferSVI:
         num_samples: int,
         guide_fn: Type[AutoGuide],
     ):
+        """Construct class for specifying SVI inference method.
+
+        Parameters
+        ----------
+        iters:
+            number of iterations to run optimizer.
+
+        lr:
+            learning rate for optimizer
+
+        num_samples:
+            number of samples to return from approximate posterior.
+
+        guide_fn:
+            variational model or guide to follow for SVI.
+
+        Returns
+        -------
+        InferSVI
+        """
         self.iters = iters
         self.num_samples = num_samples
         self.handler = SVIHandler(optimizer=Adam(lr))
@@ -29,6 +49,23 @@ class InferSVI:
         data: DataSpec,
         name: Optional[str] = None,
     ) -> PosteriorHandler:
+        """Fit model given data using specificed SVI method.
+
+        Parameters
+        ----------
+        model:
+            ModelSpec for model
+
+        data:
+            DataSpec for data to do inference on
+
+        name:
+            name used to index posterior
+
+        Returns
+        -------
+        PosteriorHandler
+        """
         # Create and augment data dictionary
         input = data.make_data_dict()
         model.augment_data(input)
@@ -44,10 +81,8 @@ class InferSVI:
         samples["losses"] = self.handler.losses
 
         # Create object to hold posterior samples and data
-        if name is None:
-            name = ""
         self.posterior = PosteriorHandler(
-            samples=samples, data=data, name=name
+            samples=samples, data=data, name=name if name else ""
         )
         return self.posterior
 

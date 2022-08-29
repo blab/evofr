@@ -9,6 +9,17 @@ from .model_helpers import is_obs_idx, pad_to_obs
 
 class FixedGA:
     def __init__(self, gam_prior=0.5, prior_family="Cauchy"):
+        """Construct FixedGrowthAdvantage model.
+        Parameters
+        ----------
+        gam_prior:
+            hyper_prior for scale of Rt increment.
+        prior_family:
+            family to draw scale from for LAS.
+        Returns
+        -------
+        FixedGA
+        """
         self.gam_prior = gam_prior
 
         if prior_family == "Cauchy":
@@ -69,7 +80,24 @@ class FreeGrowth:
 
 
 class GARW:
-    def __init__(self, gam_prior=0.5, gam_delta_prior=0.5, prior_family="Cauchy"):
+    def __init__(
+        self, gam_prior=0.5, gam_delta_prior=0.5, prior_family="Cauchy"
+    ):
+        """Construct FixedGrowthAdvantage model.
+        Parameters
+        ----------
+        gam_prior:
+            hyper_prior for scale of Rt increment.
+        gam_delta_prior:
+            hyper_prior for scale of growth advantage increment.
+        prior_family:
+            family to draw scale from for LAS.
+
+        Returns
+        -------
+        GARW
+        """
+
         self.gam_prior = gam_prior
         self.gam_delta_prior = gam_delta_prior
 

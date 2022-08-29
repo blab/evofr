@@ -48,14 +48,31 @@ def MLR_numpyro(seq_counts, N, X, tau=None, pred=False, var_names=None):
 
 class MultinomialLogisticRegression(ModelSpec):
     def __init__(self, tau: float) -> None:
+        """Construct ModelSpec for Multinomial logistic regression
+
+        Parameters
+        ----------
+        tau:
+            Assumed generation time for conversion to relative R.
+
+        Returns
+        -------
+        MultinomialLogisticRegression
+        """
         self.tau = tau  # Fixed generation time
         self.model_fn = MLR_numpyro
 
     @staticmethod
     def make_ols_feature(start, stop):
         """
-        Given start and stop time, return feature matrix for MLR.
-        One column is the bias term (all ones), the second is date as integer.
+        Construct simple OLS features (1, x) for MultinomialLogisticRegression.
+
+        Parameters
+        ----------
+        start:
+            Start value for OLS feature.
+        stop:
+            Stop value for OLS feature.
         """
         t = jnp.arange(start=start, stop=stop)
         return jnp.column_stack((jnp.ones_like(t), t))

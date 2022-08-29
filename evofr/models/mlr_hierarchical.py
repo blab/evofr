@@ -66,11 +66,35 @@ def hier_MLR_numpyro(seq_counts, N, X, tau=None, pred=False, var_names=None):
 
 class HierMLR(ModelSpec):
     def __init__(self, tau: float) -> None:
+        """Construct ModelSpec for Hierarchial multinomial logistic regression.
+
+        Parameters
+        ----------
+        tau:
+            Assumed generation time for conversion to relative R.
+
+        Returns
+        -------
+        HierMLR
+        """
         self.tau = tau  # Fixed generation time
         self.model_fn = hier_MLR_numpyro
 
     @staticmethod
     def make_ols_feature(start, stop, n_groups):
+        """
+        Construct simple OLS features (1, x) for HierMLR as nd.array.
+
+        Parameters
+        ----------
+        start:
+            Start value for OLS feature.
+        stop:
+            Stop value for OLS feature.
+
+        n_groups:
+            number of groups in the hierarchical model.
+        """
         X_flat = MultinomialLogisticRegression.make_ols_feature(start, stop)
         return np.stack([X_flat] * n_groups, axis=-1)
 

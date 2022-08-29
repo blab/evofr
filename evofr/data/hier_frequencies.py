@@ -13,6 +13,25 @@ class HierFrequencies(DataSpec):
         group: str,
         date_to_index: Optional[dict] = None,
     ):
+        """Construct a data specification for handling variant frequencies
+        in hierarchical models.
+
+        Parameters
+        ----------
+        raw_seq:
+            a dataframe containing sequence counts with columns 'sequences',
+            'variant', and date'.
+
+        group:
+            string defining which column to seperate data by.
+
+        date_to_index:
+            optional dictionary for mapping calender dates to nd.array indices.
+
+        Returns
+        -------
+        HierFrequencies
+        """
         # Get date to index
         if date_to_index is None:
             self.dates, date_to_index = prep_dates(raw_seq["date"])

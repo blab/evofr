@@ -15,6 +15,29 @@ class CaseFrequencyData(DataSpec):
         date_to_index: Optional[dict] = None,
         var_names: Optional[List] = None,
     ):
+        """Construct a data specification for handling case counts
+        and variant frequencies.
+
+        Parameters
+        ----------
+        raw_cases:
+            a dataframe containing case counts with columns 'cases' and 'date'.
+
+        raw_seq:
+            a dataframe containing sequence counts with columns 'sequences',
+            'variant', and date'.
+
+        date_to_index:
+            optional dictionary for mapping calender dates to nd.array indices.
+
+        var_names:
+            optional list containing names of variants to be present
+
+        Returns
+        -------
+        CaseFrequencyData
+        """
+
         # Get dates
         raw_dates = pd.concat((raw_cases["date"], raw_seq["date"]))
         if date_to_index is None:
@@ -49,6 +72,28 @@ class HierarchicalCFData:
         group: str,
         date_to_index: Optional[dict] = None,
     ):
+        """Construct a data specification for handling case counts
+        and variant frequencies in a hierarchical model.
+
+        Parameters
+        ----------
+        raw_cases:
+            a dataframe containing case counts with columns 'cases' and 'date'.
+
+        raw_seq:
+            a dataframe containing sequence counts with columns 'sequences',
+            'variant', and date'.
+
+        data_to_index:
+            optional dictionary for mapping calender dates to nd.array indices.
+
+        group:
+            string defining which column to seperate data by.
+
+        Returns
+        -------
+        HierarchicalCFData
+        """
         # Get dates
         raw_dates = raw_cases["date"].append(raw_seq["data"])
         if date_to_index is None:
@@ -78,17 +123,13 @@ class HierarchicalCFData:
         if data is None:
             data = dict()
 
-        data["cases"] = np.stack(
-            [g.cases for g in self.groups],
-            axis=-1
-        )
+        data["cases"] = np.stack([g.cases for g in self.groups], axis=-1)
         data["seq_counts"] = np.stack(
             [g.seq_counts for g in self.groups],
             axis=-1,
         )
         data["N"] = np.stack(
-            [g.seq_counts.sum(axis=-1) for g in self.groups],
-            axis=-1
+            [g.seq_counts.sum(axis=-1) for g in self.groups], axis=-1
         )
         data["var_names"] = self.var_names
         return data

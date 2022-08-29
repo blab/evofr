@@ -5,6 +5,21 @@ from typing import List, Optional
 
 
 def prep_dates(raw_dates: pd.Series):
+    """Return vector of dates and a mapping of dates to indices.
+
+    Parameters
+    ----------
+    raw_dates:
+        pandas series containing dates of interest
+
+    Returns
+    -------
+    dates:
+        list containing dates
+
+    date_to_index:
+        dictionary taking in dates and returning integer indices
+    """
     _dates = pd.to_datetime(raw_dates)
     dmn = _dates.min()
     dmx = _dates.max()
@@ -15,6 +30,7 @@ def prep_dates(raw_dates: pd.Series):
 
 
 def forecast_dates(dates, T_forecast: int):
+    """Generate dates of forecast given forecast interval of length 'T_forecast'."""
     last_date = dates[-1]
     dates_f = []
     for d in range(T_forecast):
@@ -23,6 +39,7 @@ def forecast_dates(dates, T_forecast: int):
 
 
 def expand_dates(dates, T_forecast: int):
+    """Extend existing dates list with forecast interval of length 'T_forecast'"""
     x_dates = dates.copy()
     for d in range(T_forecast):
         x_dates.append(dates[-1] + datetime.timedelta(days=d + 1))
@@ -30,6 +47,21 @@ def expand_dates(dates, T_forecast: int):
 
 
 def prep_cases(raw_cases: pd.DataFrame, date_to_index: Optional[dict] = None):
+    """Process raw_cases data to nd.array including unobserved dates.
+
+    Parameters
+    ----------
+    raw_cases:
+        a dataframe containing case counts with columns 'cases' and 'date'.
+
+    date_to_index:
+        optional dictionary for mapping calender dates to nd.array indices.
+
+    Returns
+    -------
+    C:
+        nd.array containing number of cases on each date.
+    """
     raw_cases["date"] = pd.to_datetime(raw_cases["date"])
     if date_to_index is None:
         _, date_to_index = prep_dates(raw_cases["date"])
@@ -44,9 +76,7 @@ def prep_cases(raw_cases: pd.DataFrame, date_to_index: Optional[dict] = None):
 
 
 def format_var_names(raw_names: List[str]):
-    """
-    Places `other` category to be last element.
-    """
+    """Places `other` category to be last element if present."""
     if "other" in raw_names:
         names = []
         for s in raw_names:
@@ -62,9 +92,24 @@ def counts_to_matrix(
     var_names: List[str],
     date_to_index: Optional[dict] = None,
 ):
-    """
-    Turn `raw_seqs` to a matrix C with counts of each variant (v) on a given
-    day t being element C[t,v]. Only uses names present in var_names.
+    """Process 'raw_seq' data to nd.array including unobserved dates.
+
+    Parameters
+    ----------
+    raw_seq:
+        a dataframe containing sequence counts with
+        columns 'sequences' and 'date'.
+
+    var_names:
+        list of variant to count observations.
+
+    date_to_index:
+        optional dictionary for mapping calender dates to nd.array indices.
+
+    Returns
+    -------
+    C:
+        nd.array containing number of sequences of each variant on each date.
     """
     raw_seqs["date"] = pd.to_datetime(raw_seqs["date"])
     if date_to_index is None:
@@ -92,6 +137,30 @@ def prep_sequence_counts(
     date_to_index: Optional[dict] = None,
     var_names: Optional[List] = None,
 ):
+    """Process 'raw_seq' data to nd.array including unobserved dates.
+
+    Parameters
+    ----------
+    raw_seq:
+        a dataframe containing sequence counts with
+        columns 'sequences' and 'date'.
+
+
+    date_to_index:
+        optional dictionary for mapping calender dates to nd.array indices.
+
+    var_names:
+        optional list of variant to count observations.
+
+    Returns
+    -------
+    var_names:
+        list of variants counted
+
+    C:
+        nd.array containing number of sequences of each variant on each date.
+    """
+
     if var_names is None:
         raw_var_names = list(pd.unique(raw_seqs.variant))
         raw_var_names.sort()

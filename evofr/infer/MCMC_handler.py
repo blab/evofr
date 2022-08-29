@@ -13,8 +13,24 @@ class MCMCHandler:
         kernel: Optional[Type[MCMCKernel]] = None,
         **kernel_kwargs
     ):
-        if kernel is None:
-            kernel = NUTS
+        """
+        Construct MCMC handler.
+
+        Parameters
+        ----------
+        rng_key:
+            seed for pseudorandom number generator.
+
+        kernel:
+            optional MCMC kernel. Defaults to NUTS implementation in numpyro.
+
+        **kernel_kwargs:
+            kwargs to be passed to MCMC kernel at construction.
+
+        Returns
+        ------
+        MCMCHandler
+        """
         self.rng_key = random.PRNGKey(rng_key)
         self.kernel = kernel if kernel else NUTS
         self.kernel_kwargs = kernel_kwargs
@@ -28,6 +44,24 @@ class MCMCHandler:
         num_samples: int,
         **mcmc_kwargs
     ):
+        """
+        Fit model using MCMC given data.
+
+        model:
+            a numpyro model.
+
+        data:
+            dictionary containing arguments to 'model'.
+
+        num_warmup:
+            number of samples for warmup period in MCMC.
+
+        num_samples:
+            number of samples to be returned in MCMC.
+
+        **mcmc_kwargs:
+            additional arguments to be passed to MCMC algorithms.
+        """
         self.mcmc = MCMC(
             self.kernel(model, **self.kernel_kwargs),
             num_warmup=num_warmup,

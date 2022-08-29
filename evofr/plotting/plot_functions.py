@@ -5,16 +5,32 @@ from evofr.posterior.posterior_helpers import get_median, get_quantiles
 
 
 def prep_posterior_for_plot(
-    var, samples, ps: List[float], forecast: Optional[bool] = False
+    site, samples, ps: List[float], forecast: Optional[bool] = False
 ):
+    """Prep posteriors for plotting by finding time span, medians, and quantiles.
+
+    Parameters
+    ----------
+
+    site:
+        Name of the site to access from samples.
+
+    samples:
+        Dictionary with keys being site or variable names.
+        Values are DeviceArrays containing posterior samples
+        with shape (sample_number, site_shape).
+
+    ps:
+        Levels of confidence to generate quantiles for.
+
+    forecast:
+        Prep posterior for forecasts? Defaults to False.
     """
-    Prep posteriors for plotting by finding time span, medians, and quantiles.
-    """
-    med, quants = get_quantiles(samples, ps, var)
+    med, quants = get_quantiles(samples, ps, site)
     t = jnp.arange(0, med.shape[0], 1)
 
     if forecast:
-        med_f, quants_f = get_quantiles(samples, ps, var + "_forecast")
+        med_f, quants_f = get_quantiles(samples, ps, site + "_forecast")
         t_f = med.shape[0] + jnp.arange(0, med_f.shape[0], 1)
         t = jnp.concatenate((t, t_f))
         med = jnp.concatenate((med, med_f))
@@ -34,7 +50,32 @@ def plot_posterior_time(
 ):
     """
     Loop over variants to plot medians and quantiles at specifed points.
-    Plots all time points unless time points to be included are specified in included.
+    Plots all time points unless time points to be included
+    are specified in 'included'.
+
+    Parameters
+    ----------
+    ax:
+        Matplotlib axis to plot on.
+
+    t:
+        Time points to plot over.
+
+    med:
+        Median values.
+
+    quants:
+        Quantiles to be plotted. Organized as a list of CIs as DeviceArrays.
+
+    alphas:
+        Transparency for each quantile.
+
+    colors:
+        List of colors to use for each variant.
+
+    included:
+        optional list of bools which determine
+        which time points and variants to include observations from.
     """
 
     for variant in range(med.shape[-1]):

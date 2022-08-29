@@ -11,6 +11,25 @@ class VariantFrequencies(DataSpec):
         date_to_index: Optional[dict] = None,
         var_names: Optional[List] = None,
     ):
+        """Construct a data specification for handling variant frequencies.
+
+        Parameters
+        ----------
+        raw_seq:
+            a dataframe containing sequence counts with columns 'sequences',
+            'variant', and date'.
+
+        date_to_index:
+            optional dictionary for mapping calender dates to nd.array indices.
+
+        var_names:
+            optional list containing names of variants to be present
+
+        Returns
+        -------
+        VariantFrequencies
+        """
+
         # Get mapping from date to index
         if date_to_index is None:
             self.dates, date_to_index = prep_dates(raw_seq["date"])

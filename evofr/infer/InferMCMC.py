@@ -16,6 +16,23 @@ class InferMCMC:
         kernel: Type[MCMCKernel],
         **kernel_kwargs
     ):
+        """Construct class for specifying MCMC inference method.
+
+        Parameters
+        ----------
+        num_warmup:
+            number of warmup samples to run.
+
+        num_samples:
+            number of samples to return from MCMC.
+
+        kernel:
+            transition kernel for MCMC.
+
+        Returns
+        -------
+        InferMCMC
+        """
         self.num_warmup = num_warmup
         self.num_samples = num_samples
         self.handler = MCMCHandler(kernel=kernel, **kernel_kwargs)
@@ -23,6 +40,23 @@ class InferMCMC:
     def fit(
         self, model: ModelSpec, data: DataSpec, name: Optional[str] = None
     ) -> PosteriorHandler:
+        """Fit model given data using specificed MCMC method.
+
+        Parameters
+        ----------
+        model:
+            ModelSpec for model
+
+        data:
+            DataSpec for data to do inference on
+
+        name:
+            name used to index posterior
+
+        Returns
+        -------
+        PosteriorHandler
+        """
         # Create and augment data dictionary
         input = data.make_data_dict()
         model.augment_data(input)
@@ -42,6 +76,4 @@ class InferMCMC:
 
 class InferNUTS(InferMCMC):
     def __init__(self, num_warmup: int, num_samples: int, **kernel_kwargs):
-        super().__init__(
-            num_warmup, num_samples, NUTS, **kernel_kwargs
-        )
+        super().__init__(num_warmup, num_samples, NUTS, **kernel_kwargs)

@@ -14,6 +14,25 @@ class SVIHandler:
     def __init__(
         self, rng_key=1, loss=Trace_ELBO(num_particles=2), optimizer=None
     ):
+        """
+        Construct SVI handler.
+
+        Parameters
+        ----------
+        rng_key:
+            seed for pseudorandom number generator.
+
+        loss:
+            optional loss to be used for MCMC.
+
+        optimizer:
+            optimizer to be used for SVI.
+
+        Returns
+        -------
+        SVIHandler
+        """
+
         self.rng_key = random.PRNGKey(rng_key)
         self.loss_fn = loss
         self.optimizer = optimizer

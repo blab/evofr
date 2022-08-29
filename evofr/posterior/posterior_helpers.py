@@ -7,16 +7,36 @@ from evofr.data import forecast_dates
 from evofr.data import DataSpec
 
 
-def get_quantile(samples, p, site):
+def get_quantile(samples: Dict, p, site):
+    """Returns credible interval of size 'p' from 'samples' at 'site'.
+
+    Parameters
+    ----------
+    samples:
+        Dictionary with keys being site or variable names.
+        Values are DeviceArrays with shape (sample_number, site_shape).
+
+    p:
+        Percent credible interval to return.
+
+    site:
+        Name of variable to generate credible interval for.
+
+    Returns
+    -------
+    DeviceArray of shape (site_shape).
+    """
     q = jnp.array([0.5 * (1 - p), 0.5 * (1 + p)])
     return jnp.quantile(samples[site], q=q, axis=0)
 
 
-def get_median(samples: dict, site):
+def get_median(samples: Dict, site):
+    """Returns median value across all samples for a site"""
     return jnp.median(samples[site], axis=0)
 
 
-def get_quantiles(samples, ps, site):
+def get_quantiles(samples: Dict, ps, site):
+    """Returns credible interval of sizes 'ps' from 'samples' at 'site'."""
     quants = []
     for i in range(len(ps)):
         quants.append(get_quantile(samples, ps[i], site))
