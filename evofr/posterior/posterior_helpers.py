@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from evofr.data import forecast_dates
 from evofr.data import DataSpec
+from collections import defaultdict
 
 
 def get_quantile(samples: Dict, p, site):
@@ -145,6 +146,10 @@ def get_growth_advantage(samples, data, ps, name, rel_to="other"):
 
 class EvofrEncoder(json.JSONEncoder):
     def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         if isinstance(obj, jnp.DeviceArray):
@@ -268,7 +273,7 @@ def get_sites_variants_json(
 
                 # Get HDI Lower
                 variant_dict[f"HDI_{round(ps[i] * 100)}_lower"] = jnp.quantile(
-                    site_samples[:, :,  v, ...],
+                    site_samples[:, :, v, ...],
                     q=q[0],
                     axis=0,
                 )
@@ -277,6 +282,111 @@ def get_sites_variants_json(
         # Make site dict in dict
         export_dict[site] = site_dict
     return export_dict
+
+
+def get_sites_variants_tidy(
+    samples: Dict,
+    data: DataSpec,
+    sites: List[str],
+    ps,
+    name: Optional[str] = None,
+):
+    # Save metadata
+    metadata = dict()
+
+    # Make keys for probability levels
+    ps_keys = ["median"]
+    for p in ps:
+        ps_keys.append(f"HDI_{round(p * 100)}_upper")
+        ps_keys.append(f"HDI_{round(p * 100)}_lower")
+    metadata["ps"] = ps_keys
+
+    metadata["sites"] = sites
+    if name:
+        metadata["location"] = [name]
+
+    # Names from dataspec
+    def add_dataspec_attr(
+        export_dict: dict, data, attr: str, key: Optional[str] = None
+    ) -> None:
+        key = key if key else attr
+        if hasattr(data, attr):
+            export_dict[key] = getattr(data, attr)
+        return None
+
+    add_dataspec_attr(metadata, data, "dates", key="dates")
+    add_dataspec_attr(metadata, data, "var_names", key="variants")
+
+    # Each data entry will be tidy
+    date_map = data.date_to_index
+
+    def tidy_site(site):
+        # Loop over entries of median and
+        med, quants = get_quantiles(samples, ps, site)
+        med, quants = np.array(med), np.array(quants)
+
+        entries = []
+
+        for v, variant in enumerate(metadata["variants"]):
+            for date, index in date_map.items():
+                # Make template for entries
+                entry = {
+                    "location": name,
+                    "site": site,
+                    "variant": variant,
+                    "date": date.strftime("%Y-%m-%d"),
+                }
+
+                # Create median entry
+                entry_med = entry.copy()
+                entry_med["value"] = np.around(med[index, v], decimals=3)
+                entry_med["ps"] = "median"
+
+                # Add median entry
+                entries.append(entry_med)
+
+                # Loop over intervals of interest
+                for i, p in enumerate(ps):
+                    entry_lower = entry.copy()
+                    entry_upper = entry.copy()
+
+                    # Add values from intervals
+                    entry_lower["value"] = np.around(
+                        quants[i][0, index, v], decimals=3
+                    )
+                    entry_lower["ps"] = f"HDI_{round(p * 100)}_lower"
+
+                    entry_upper["value"] = np.around(
+                        quants[i][1, index, v], decimals=3
+                    )
+                    entry_upper["ps"] = f"HDI_{round(p * 100)}_upper"
+
+                    # Add upper and lower bounds
+                    entries.append(entry_lower)
+                    entries.append(entry_upper)
+        return entries
+
+    entries = []
+    for site in sites:
+        entries.extend(tidy_site(site))
+
+    tidy_dict = {"metadata": metadata, "data": entries}
+    return tidy_dict
+
+
+def combine_sites_tidy(tidy_dicts):
+    # Combine metadata
+    metadata = defaultdict(list)
+
+    for tidy_dict in tidy_dicts:
+        for key, value in tidy_dict["metadata"].items():
+            metadata[key].extend([v for v in value if v not in metadata[key]])
+
+    # Loop over data
+    entries = []
+    for tidy_dict in tidy_dicts:
+        entries.extend(tidy_dict["data"])
+    return {"metadata": metadata, "data": entries}
 
 
 def save_json(out: dict, path) -> None:
