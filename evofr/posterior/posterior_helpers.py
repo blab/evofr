@@ -149,7 +149,7 @@ class EvofrEncoder(json.JSONEncoder):
         if isinstance(obj, np.integer):
             return int(obj)
         if isinstance(obj, np.floating):
-            return float(obj)
+            return round(float(obj), 3)
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         if isinstance(obj, jnp.DeviceArray):
