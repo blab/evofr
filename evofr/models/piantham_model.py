@@ -6,7 +6,28 @@ import jax.numpy as jnp
 from jax import jit, lax
 
 
-def compute_frequency(ga, q0, gen_rev, T):
+def compute_frequency_piantham(ga, q0, gen_rev, T):
+    """
+    Compute variant frequencies according to Piantham model.
+
+    Parameters
+    ----------
+    ga:
+        Growth advantages for non-baseline variants.
+
+    q0:
+        Initial variant frequencies.
+
+    gen_rev:
+        Reversed generation time.
+
+    T:
+        Total length of time to simulate frequencies for.
+
+    Returns
+    -------
+    Simulated frequencies as DeviceArray.
+    """
     _ga = jnp.append(ga, 1.0)
     max_age = gen_rev.shape[-1]
     N_variants = q0.shape[-1]
@@ -14,17 +35,17 @@ def compute_frequency(ga, q0, gen_rev, T):
     q0_padded = jnp.vstack((jnp.zeros((max_age - 1, N_variants)), q0))
 
     @jit
-    def _scan_frequency(q, xs):
+    def _scan_frequency(q, _):
         # Compute weighted frequency
         q_mag = _ga * jnp.einsum("dv, d -> v", q, gen_rev)
-        q_new = q_mag / q_mag.sum()  # Renormalize
-        return jnp.vstack((q[-(max_age - 1) :, :], q_new)), q_new[:, None]
+        q_new = q_mag / q_mag.sum()  # Normalize
+        return jnp.vstack((q[-(max_age - 1):, :], q_new)), q_new[:, None]
 
     _, q = lax.scan(_scan_frequency, init=q0_padded, length=T - 1, xs=None)
     return jnp.vstack((q0, jnp.squeeze(q)))
 
 
-def Ito_model_numpyro(seq_counts, N, gen_rev, var_names=None, pred=False):
+def Piantham_model_numpyro(seq_counts, N, gen_rev, pred=False):
     T, N_variants = seq_counts.shape
 
     # Intial frequency
@@ -36,7 +57,9 @@ def Ito_model_numpyro(seq_counts, N, gen_rev, var_names=None, pred=False):
     with numpyro.plate("growth_advantage", N_variants - 1):
         ga = numpyro.sample("ga", dist.LogNormal(loc=0.0, scale=1.0))
 
-    freq = numpyro.deterministic("freq", compute_frequency(ga, q0, gen_rev, T))
+    freq = numpyro.deterministic(
+        "freq", compute_frequency_piantham(ga, q0, gen_rev, T)
+    )
     numpyro.deterministic("s", ga - 1)
 
     # Compute likelihood
@@ -69,10 +92,11 @@ class PianthamModel(ModelSpec):
         MLRNowcast
         """
         self.gen = gen
-        self.model_fn = Ito_model_numpyro
+        self.model_fn = Piantham_model_numpyro
 
     def augment_data(self, data: dict) -> None:
         data["gen_rev"] = jnp.flip(self.gen, axis=-1)
-        return None
 
-#TODO: Generate Rt based on equation (3) in paper?
+        # Remove unnecessary key from VariantFrequencies
+        data.pop("var_names", None)
+        return None
