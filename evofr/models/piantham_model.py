@@ -1,3 +1,5 @@
+from functools import partial
+from evofr.models.renewal_model.model_options import MultinomialSeq
 from .model_spec import ModelSpec
 import numpyro
 import numpyro.distributions as dist
@@ -45,7 +47,7 @@ def compute_frequency_piantham(ga, q0, gen_rev, T):
     return jnp.vstack((q0, jnp.squeeze(q)))
 
 
-def Piantham_model_numpyro(seq_counts, N, gen_rev, pred=False):
+def Piantham_model_numpyro(seq_counts, N, gen_rev, SeqLik, pred=False):
     T, N_variants = seq_counts.shape
 
     # Intial frequency
@@ -62,13 +64,8 @@ def Piantham_model_numpyro(seq_counts, N, gen_rev, pred=False):
     )
     numpyro.deterministic("s", ga - 1)
 
-    # Compute likelihood
-    obs = None if pred else np.nan_to_num(seq_counts)
-    numpyro.sample(
-        "seq_counts",
-        dist.Multinomial(probs=freq, total_count=np.nan_to_num(N)),
-        obs=obs,
-    )
+    # Compute likelihood of frequency
+    SeqLik.model(seq_counts, N, freq, pred)
 
 
 class PianthamModel(ModelSpec):
@@ -79,7 +76,7 @@ class PianthamModel(ModelSpec):
     using GISAID sequence frequencies'.
     """
 
-    def __init__(self, gen):
+    def __init__(self, gen, SeqLik=None):
         """Construct ModelSpec for frequency model with non-trivial generation time.
 
         Parameters
@@ -87,12 +84,17 @@ class PianthamModel(ModelSpec):
         gen:
             Assumed generation time.
 
+        SeqLik:
+            Optional sequence likelihood option: MultinomialSeq or
+            DirMultinomialSeq. Defaults to MultinomialSeq.
+
         Returns
         -------
         MLRNowcast
         """
         self.gen = gen
-        self.model_fn = Piantham_model_numpyro
+        self.SeqLik = MultinomialSeq() if SeqLik is None else SeqLik
+        self.model_fn = partial(Piantham_model_numpyro, SeqLik=self.SeqLik)
 
     def augment_data(self, data: dict) -> None:
         data["gen_rev"] = jnp.flip(self.gen, axis=-1)
