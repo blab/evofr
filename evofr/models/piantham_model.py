@@ -41,13 +41,15 @@ def compute_frequency_piantham(ga, q0, gen_rev, T):
         # Compute weighted frequency
         q_mag = _ga * jnp.einsum("dv, d -> v", q, gen_rev)
         q_new = q_mag / q_mag.sum()  # Normalize
-        return jnp.vstack((q[-(max_age - 1):, :], q_new)), q_new[:, None]
+        return jnp.vstack((q[-(max_age - 1) :, :], q_new)), q_new[:, None]
 
     _, q = lax.scan(_scan_frequency, init=q0_padded, length=T - 1, xs=None)
     return jnp.vstack((q0, jnp.squeeze(q)))
 
 
-def Piantham_model_numpyro(seq_counts, N, gen_rev, SeqLik, pred=False):
+def Piantham_model_numpyro(
+    seq_counts, N, gen_rev, SeqLik, forecast_L, pred=False
+):
     T, N_variants = seq_counts.shape
 
     # Intial frequency
@@ -59,13 +61,19 @@ def Piantham_model_numpyro(seq_counts, N, gen_rev, SeqLik, pred=False):
     with numpyro.plate("growth_advantage", N_variants - 1):
         ga = numpyro.sample("ga", dist.LogNormal(loc=0.0, scale=1.0))
 
+    _T = T + forecast_L if pred else T
+    _freq = compute_frequency_piantham(ga, q0, gen_rev, _T)
+
     freq = numpyro.deterministic(
-        "freq", compute_frequency_piantham(ga, q0, gen_rev, T)
+        "freq", jnp.take(_freq, jnp.arange(T), axis=0)
     )
     numpyro.deterministic("s", ga - 1)
 
     # Compute likelihood of frequency
     SeqLik.model(seq_counts, N, freq, pred)
+
+    if pred:
+        numpyro.deterministic("freq_forecast", _freq[T:, :])
 
 
 class PianthamModel(ModelSpec):
@@ -76,7 +84,7 @@ class PianthamModel(ModelSpec):
     using GISAID sequence frequencies'.
     """
 
-    def __init__(self, gen, SeqLik=None):
+    def __init__(self, gen, SeqLik=None, forecast_L=None):
         """Construct ModelSpec for frequency model with non-trivial generation time.
 
         Parameters
@@ -88,13 +96,21 @@ class PianthamModel(ModelSpec):
             Optional sequence likelihood option: MultinomialSeq or
             DirMultinomialSeq. Defaults to MultinomialSeq.
 
+        forecast_L:
+            Optional forecast length.
+
         Returns
         -------
-        MLRNowcast
+        PianthamModel
         """
         self.gen = gen
         self.SeqLik = MultinomialSeq() if SeqLik is None else SeqLik
-        self.model_fn = partial(Piantham_model_numpyro, SeqLik=self.SeqLik)
+        self.forecast_L = 0 if forecast_L is None else forecast_L
+        self.model_fn = partial(
+            Piantham_model_numpyro,
+            SeqLik=self.SeqLik,
+            forecast_L=self.forecast_L,
+        )
 
     def augment_data(self, data: dict) -> None:
         data["gen_rev"] = jnp.flip(self.gen, axis=-1)

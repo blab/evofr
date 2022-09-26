@@ -82,7 +82,7 @@ class InferSVI:
 
         # Create object to hold posterior samples and data
         self.posterior = PosteriorHandler(
-            samples=samples, data=data, name=name if name else ""
+            samples=samples, data=data, name=name if name is not None else ""
         )
         return self.posterior
 
