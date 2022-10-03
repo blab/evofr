@@ -46,8 +46,8 @@ class HierFrequencies(DataSpec):
         # Get variant names
         raw_var_names = list(pd.unique(raw_seq.variant))
         raw_var_names.sort()
-        self.pivot = pivot
-        self.var_names = format_var_names(raw_var_names, pivot=self.pivot)
+        self.var_names = format_var_names(raw_var_names, pivot=pivot)
+        self.pivot = self.var_names[-1]
 
         # Loop each group
         grouped = raw_seq.groupby(group)

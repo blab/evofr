@@ -55,12 +55,12 @@ class CaseFrequencyData(DataSpec):
         self.cases = case_data.cases
 
         # Get sequence data with VariantFrequencies
-        self.pivot = pivot
         freq_data = VariantFrequencies(
-            raw_seq, self.date_to_index, var_names, self.pivot
+            raw_seq, self.date_to_index, var_names, pivot
         )
         self.seq_counts = freq_data.seq_counts
         self.var_names = freq_data.var_names
+        self.pivot = self.var_names[-1]
 
     def make_data_dict(self, data: Optional[dict] = None) -> dict:
         if data is None:

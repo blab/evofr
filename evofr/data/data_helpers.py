@@ -2,6 +2,7 @@ import datetime
 import numpy as np
 import pandas as pd
 from typing import List, Optional
+import warnings
 
 
 def prep_dates(raw_dates: pd.Series):
@@ -79,13 +80,15 @@ def format_var_names(raw_names: List[str], pivot: Optional[str] = None):
     """Places pivot category to be last element if present."""
     pivot = "other" if pivot is None else pivot
     if pivot in raw_names:
-        # Move pivot the end
-        names = []
-        for s in raw_names:
-            if s != pivot:
-                names.append(s)
+        # Move pivot the end of list
+        names = raw_names.copy()
         names.append(pivot)
+        names.remove(pivot)  # Removes first instance of pivot
         return names
+    else:
+        warnings.warn(
+            f"{pivot} not present in variant names. Using provided order."
+        )
     # Otherwise, return the original names
     return raw_names
 

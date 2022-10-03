@@ -42,10 +42,10 @@ class VariantFrequencies(DataSpec):
         self.date_to_index = date_to_index
 
         # Turn dataframe to counts of each variant sequenced each day
-        self.pivot = pivot
         self.var_names, self.seq_counts = prep_sequence_counts(
-            raw_seq, self.date_to_index, var_names, pivot=self.pivot
+            raw_seq, self.date_to_index, var_names, pivot=pivot
         )
+        self.pivot = self.var_names[-1]
 
     def make_data_dict(self, data: Optional[dict] = None) -> dict:
         if data is None:
