@@ -10,6 +10,7 @@ class VariantFrequencies(DataSpec):
         raw_seq: pd.DataFrame,
         date_to_index: Optional[dict] = None,
         var_names: Optional[List] = None,
+        pivot: Optional[str] = None,
     ):
         """Construct a data specification for handling variant frequencies.
 
@@ -23,7 +24,12 @@ class VariantFrequencies(DataSpec):
             optional dictionary for mapping calender dates to nd.array indices.
 
         var_names:
-            optional list containing names of variants to be present
+            optional list containing names of variants to be present.
+
+        pivot:
+            optional name of variant to place last.
+            Defaults to "other" if present otherwise.
+            This will usually used as a reference or pivot strain.
 
         Returns
         -------
@@ -36,8 +42,9 @@ class VariantFrequencies(DataSpec):
         self.date_to_index = date_to_index
 
         # Turn dataframe to counts of each variant sequenced each day
+        self.pivot = pivot
         self.var_names, self.seq_counts = prep_sequence_counts(
-            raw_seq, self.date_to_index, var_names
+            raw_seq, self.date_to_index, var_names, pivot=self.pivot
         )
 
     def make_data_dict(self, data: Optional[dict] = None) -> dict:

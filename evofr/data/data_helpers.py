@@ -75,15 +75,18 @@ def prep_cases(raw_cases: pd.DataFrame, date_to_index: Optional[dict] = None):
     return C
 
 
-def format_var_names(raw_names: List[str]):
-    """Places `other` category to be last element if present."""
-    if "other" in raw_names:
+def format_var_names(raw_names: List[str], pivot: Optional[str] = None):
+    """Places pivot category to be last element if present."""
+    pivot = "other" if pivot is None else pivot
+    if pivot in raw_names:
+        # Move pivot the end
         names = []
         for s in raw_names:
-            if s != "other":
+            if s != pivot:
                 names.append(s)
-        names.append("other")
+        names.append(pivot)
         return names
+    # Otherwise, return the original names
     return raw_names
 
 
@@ -136,6 +139,7 @@ def prep_sequence_counts(
     raw_seqs: pd.DataFrame,
     date_to_index: Optional[dict] = None,
     var_names: Optional[List] = None,
+    pivot: Optional[str] = None,
 ):
     """Process 'raw_seq' data to nd.array including unobserved dates.
 
@@ -152,6 +156,10 @@ def prep_sequence_counts(
     var_names:
         optional list of variant to count observations.
 
+    pivot:
+        optional name of variant to place last.
+        This will usually used as a reference or pivot strain.
+
     Returns
     -------
     var_names:
@@ -164,6 +172,6 @@ def prep_sequence_counts(
     if var_names is None:
         raw_var_names = list(pd.unique(raw_seqs.variant))
         raw_var_names.sort()
-        var_names = format_var_names(raw_var_names)
+        var_names = format_var_names(raw_var_names, pivot=pivot)
     C = counts_to_matrix(raw_seqs, var_names, date_to_index=date_to_index)
     return var_names, C

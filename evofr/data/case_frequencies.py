@@ -14,6 +14,7 @@ class CaseFrequencyData(DataSpec):
         raw_seq: pd.DataFrame,
         date_to_index: Optional[dict] = None,
         var_names: Optional[List] = None,
+        pivot: Optional[str] = None,
     ):
         """Construct a data specification for handling case counts
         and variant frequencies.
@@ -33,6 +34,11 @@ class CaseFrequencyData(DataSpec):
         var_names:
             optional list containing names of variants to be present
 
+        pivot:
+            optional name of variant to place last.
+            Defaults to "other" if present otherwise.
+            This will usually used as a reference or pivot strain.
+
         Returns
         -------
         CaseFrequencyData
@@ -49,7 +55,10 @@ class CaseFrequencyData(DataSpec):
         self.cases = case_data.cases
 
         # Get sequence data with VariantFrequencies
-        freq_data = VariantFrequencies(raw_seq, self.date_to_index, var_names)
+        self.pivot = pivot
+        freq_data = VariantFrequencies(
+            raw_seq, self.date_to_index, var_names, self.pivot
+        )
         self.seq_counts = freq_data.seq_counts
         self.var_names = freq_data.var_names
 

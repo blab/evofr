@@ -12,6 +12,7 @@ class HierFrequencies(DataSpec):
         raw_seq: pd.DataFrame,
         group: str,
         date_to_index: Optional[dict] = None,
+        pivot: Optional[str] = None,
     ):
         """Construct a data specification for handling variant frequencies
         in hierarchical models.
@@ -28,6 +29,11 @@ class HierFrequencies(DataSpec):
         date_to_index:
             optional dictionary for mapping calender dates to nd.array indices.
 
+        pivot:
+            optional name of variant to place last.
+            Defaults to "other" if present otherwise.
+            This will usually used as a reference or pivot strain.
+
         Returns
         -------
         HierFrequencies
@@ -40,7 +46,8 @@ class HierFrequencies(DataSpec):
         # Get variant names
         raw_var_names = list(pd.unique(raw_seq.variant))
         raw_var_names.sort()
-        self.var_names = format_var_names(raw_var_names)
+        self.pivot = pivot
+        self.var_names = format_var_names(raw_var_names, pivot=self.pivot)
 
         # Loop each group
         grouped = raw_seq.groupby(group)

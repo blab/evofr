@@ -260,6 +260,7 @@ def prep_sequence_counts_delay(
     date_to_index: Optional[dict] = None,
     var_names: Optional[List] = None,
     max_delay: Optional[int] = None,
+    pivot: Optional[str] = None
 ):
     """Process 'raw_seq' data to nd.array including unobserved dates.
 
@@ -276,6 +277,11 @@ def prep_sequence_counts_delay(
     var_names:
         optional list of variant to count observations.
 
+    pivot:
+        optional name of variant to place last.
+        Defaults to "other" if present otherwise.
+        This will usually used as a reference or pivot strain.
+
     Returns
     -------
     var_names:
@@ -288,7 +294,7 @@ def prep_sequence_counts_delay(
     if var_names is None:
         raw_var_names = list(pd.unique(raw_seqs.variant))
         raw_var_names.sort()
-        var_names = format_var_names(raw_var_names)
+        var_names = format_var_names(raw_var_names, pivot)
 
     raw_seqs["date"] = pd.to_datetime(raw_seqs["date"])
     if date_to_index is None:
@@ -325,6 +331,7 @@ class DelaySequenceCounts(DataSpec):
         date_to_index: Optional[dict] = None,
         var_names: Optional[List] = None,
         max_delay: Optional[int] = None,
+        pivot: Optional[str] = None
     ):
         """Construct a data specification for handling variant frequencies.
 
@@ -343,6 +350,11 @@ class DelaySequenceCounts(DataSpec):
         max_delay:
             optional integer showing the maximum allowed submission delay.
 
+        pivot:
+            optional name of variant to place last.
+            Defaults to "other" if present otherwise.
+            This will usually used as a reference or pivot strain.
+
         Returns
         -------
         DelaySequenceCounts
@@ -354,8 +366,9 @@ class DelaySequenceCounts(DataSpec):
         self.date_to_index = date_to_index
 
         # Turn dataframe to counts of each variant sequenced each day
+        self.pivot = pivot
         self.var_names, self.seq_counts_delay = prep_sequence_counts_delay(
-            raw_seq, self.date_to_index, var_names, max_delay
+            raw_seq, self.date_to_index, var_names, max_delay, self.pivot
         )
         self.seq_counts = self.seq_counts_delay.sum(axis=-1)
 
