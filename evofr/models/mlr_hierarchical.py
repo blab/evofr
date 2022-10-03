@@ -15,15 +15,14 @@ def hier_MLR_numpyro(seq_counts, N, X, tau=None, pred=False, var_names=None):
     _, N_features, _ = X.shape
 
     # Sampling parameters
-    with numpyro.plate("features", N_features):
-        with numpyro.plate("variants", N_variants - 1):
-
+    with numpyro.plate("features", N_features, dim=-3):
+        with numpyro.plate("variants", N_variants - 1, dim=-2):
             # Define loc and scale for beta for predictor and variant group
             beta_loc = numpyro.sample("beta_loc", dist.Normal(0.0, 3.0))
             beta_scale = numpyro.sample("beta_scale", dist.HalfNormal(1.0))
 
             # Use location and scale parameter to draw within group
-            with numpyro.plate("group", N_groups):
+            with numpyro.plate("group", N_groups, dim=-1):
                 raw_beta = numpyro.sample(
                     "raw_beta", dist.Normal(beta_loc, beta_scale)
                 )
@@ -48,11 +47,13 @@ def hier_MLR_numpyro(seq_counts, N, X, tau=None, pred=False, var_names=None):
         dist.MultinomialLogits(
             logits=jnp.swapaxes(logits, 1, 2), total_count=np.nan_to_num(N)
         ),
-        obs=obs
+        obs=obs,
     )
 
     # Re-ordering so groups are last
-    seq_counts = numpyro.deterministic("seq_counts", jnp.swapaxes(_seq_counts, 2, 1))
+    seq_counts = numpyro.deterministic(
+        "seq_counts", jnp.swapaxes(_seq_counts, 2, 1)
+    )
 
     # Compute frequency
     numpyro.deterministic("freq", softmax(logits, axis=1))
