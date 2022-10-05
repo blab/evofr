@@ -114,6 +114,8 @@ def get_growth_advantage(samples, data, ps, name, rel_to="other"):
         if s == rel_to:
             ga = jnp.divide(ga, ga[:, i][:, None])
 
+    # ga = jnp.divide(ga, ga[:, var_names.index(rel_to)][:, None])
+
     # Compute medians and quantiles
     meds = jnp.median(ga, axis=0)
     gas = []
@@ -288,6 +290,7 @@ def get_sites_variants_tidy(
     samples: Dict,
     data: DataSpec,
     sites: List[str],
+    dated: List[bool],
     ps,
     name: Optional[str] = None,
 ):
@@ -320,14 +323,18 @@ def get_sites_variants_tidy(
     # Each data entry will be tidy
     date_map = data.date_to_index
 
-    def tidy_site(site):
+    def tidy_site_date(site):
         # Loop over entries of median and
         med, quants = get_quantiles(samples, ps, site)
         med, quants = np.array(med), np.array(quants)
 
         entries = []
+        T, N_variants = med.shape
 
         for v, variant in enumerate(metadata["variants"]):
+            if v+1 > N_variants:
+                continue
+
             for date, index in date_map.items():
                 # Make template for entries
                 entry = {
@@ -366,8 +373,57 @@ def get_sites_variants_tidy(
                     entries.append(entry_upper)
         return entries
 
+    def tidy_site_flat(site):
+        # Loop over entries of median and
+        med, quants = get_quantiles(samples, ps, site)
+        med, quants = np.array(med), np.array(quants)
+
+        entries = []
+        N_variants = med.shape[0]
+
+        for v, variant in enumerate(metadata["variants"]):
+            if v+1 > N_variants:
+                continue
+
+            # Make template
+            entry = {
+                "location": name,
+                "site": site,
+                "variant": variant,
+            }
+
+            # Create median entry
+            entry_med = entry.copy()
+            entry_med["value"] = np.around(med[v], decimals=3)
+            entry_med["ps"] = "median"
+
+            # Add median entry
+            entries.append(entry_med)
+
+            # Loop over intervals of interest
+            for i, p in enumerate(ps):
+                entry_lower = entry.copy()
+                entry_upper = entry.copy()
+
+                # Add values from intervals
+                entry_lower["value"] = np.around(
+                    quants[i][0, v], decimals=3
+                )
+                entry_lower["ps"] = f"HDI_{round(p * 100)}_lower"
+
+                entry_upper["value"] = np.around(
+                    quants[i][1, v], decimals=3
+                )
+                entry_upper["ps"] = f"HDI_{round(p * 100)}_upper"
+
+                # Add upper and lower bounds
+                entries.append(entry_lower)
+                entries.append(entry_upper)
+        return entries
+
     entries = []
-    for site in sites:
+    for d, site in zip(dated, sites):
+        tidy_site = tidy_site_date if d else tidy_site_flat
         entries.extend(tidy_site(site))
 
     tidy_dict = {"metadata": metadata, "data": entries}
