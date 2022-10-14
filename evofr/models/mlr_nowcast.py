@@ -119,8 +119,8 @@ def estimate_delay(seq_count_delays, hazard_model):
     _, N_variants, D = seq_count_delays.shape
 
     # Assume delay distribution is constant over time
-    empirical_delays = np.nan_to_num(seq_count_delays.sum(axis=0))
-    total_of_variant = np.nan_to_num(empirical_delays.sum(axis=-1))
+    empirical_delays = np.nan_to_num(seq_count_delays).sum(axis=0)
+    total_of_variant = np.nan_to_num(empirical_delays).sum(axis=-1)
 
     # Generate discrete based on specified hazard model
     h = numpyro.deterministic("h", hazard_model(N_variants, D))
@@ -366,10 +366,10 @@ class DelaySequenceCounts(DataSpec):
         self.date_to_index = date_to_index
 
         # Turn dataframe to counts of each variant sequenced each day
-        self.pivot = pivot
         self.var_names, self.seq_counts_delay = prep_sequence_counts_delay(
-            raw_seq, self.date_to_index, var_names, max_delay, self.pivot
+            raw_seq, self.date_to_index, var_names, max_delay, pivot
         )
+        self.pivot = self.var_names[-1]
         self.seq_counts = self.seq_counts_delay.sum(axis=-1)
 
     def make_data_dict(self, data: Optional[dict] = None) -> dict:
