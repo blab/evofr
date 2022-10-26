@@ -245,11 +245,11 @@ class MLRNowcast(ModelSpec):
             MLR_nowcast_model,
             hazard_model=self.hazard_model,
             SeqLik=self.SeqLik,
+            tau=self.tau,
         )
 
     def augment_data(self, data: dict) -> None:
         T = len(data["N"])
-        data["tau"] = self.tau
         data["X"] = MultinomialLogisticRegression.make_ols_feature(
             0, T
         )  # Use intercept and time as predictors
@@ -294,7 +294,7 @@ def prep_sequence_counts_delay(
     if var_names is None:
         raw_var_names = list(pd.unique(raw_seqs.variant))
         raw_var_names.sort()
-        var_names = format_var_names(raw_var_names, pivot)
+        var_names = format_var_names(raw_var_names, pivot=pivot)
 
     raw_seqs["date"] = pd.to_datetime(raw_seqs["date"])
     if date_to_index is None:
@@ -317,10 +317,10 @@ def prep_sequence_counts_delay(
             C[date_to_index[row.date], i, delay - 1] = row.sequences
 
     # Loop over matrix rows to correct for zero counts
-    for d in range(T):
-        if not np.isnan(C[d, :, :]).all():
+    for t in range(T):
+        if not np.isnan(C[t, :, :]).all():
             # If not all days samples are nan, replace nan with zeros
-            np.nan_to_num(C[d, :, :], copy=False)
+            np.nan_to_num(C[t, :, :], copy=False)
     return var_names, C
 
 
