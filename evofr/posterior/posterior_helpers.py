@@ -100,9 +100,10 @@ def get_freq(samples: Dict, data: DataSpec, ps, name, forecast=False):
     )
 
 
-def get_growth_advantage(samples, data, ps, name, rel_to="other"):
+def get_growth_advantage(samples, data, ps, name, rel_to=None):
     # Unpack variant info
     var_names = data.var_names
+    rel_to = data.pivot if rel_to is None else rel_to
 
     # Get posterior samples
     ga = samples["ga"]
