@@ -6,6 +6,7 @@ from .data.data_helpers import *
 from .models import ModelSpec
 from .models import MultinomialLogisticRegression, HierMLR
 from .models import PianthamModel
+from .models import InnovationMLR, InnovationSequenceCounts
 from .models.renewal_model import *
 
 from .infer import SVIHandler, MCMCHandler
