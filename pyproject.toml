@@ -3,7 +3,7 @@ name = "evofr"
 version = "0.1.14"
 description = "Tools for evolutionary forecasting."
 authors = ["marlinfiggins <marlinfiggins@gmail.com>"]
-license = "GPL"
+license = "AGPL-3.0"
 
 [tool.poetry.dependencies]
 python = "^3.9"
