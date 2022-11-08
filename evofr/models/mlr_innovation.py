@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import List, Optional
 from jax._src.nn.functions import softmax
 import numpy as np
@@ -17,11 +18,90 @@ from .model_spec import ModelSpec
 from functools import partial
 
 
+class DeltaPriorModel(ABC):
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def model(self):
+        pass
+
+
+class DeltaNormalPrior(DeltaPriorModel):
+    def __init__(
+        self, loc: Optional[float] = None, scale: Optional[float] = None
+    ):
+        self.loc = loc
+        self.scale = scale
+
+    def model(self, N_variants):
+        delta_scale = (
+            numpyro.sample("delta_scale", dist.HalfNormal(0.1))
+            if self.loc is None
+            else self.loc
+        )
+        delta_loc = (
+            numpyro.sample("delta_loc", dist.Normal(0.0, 0.1))
+            if self.scale is None
+            else self.scale
+        )
+        raw_delta = numpyro.sample(
+            "raw_delta",
+            dist.Normal(delta_loc, delta_scale),
+            sample_shape=(N_variants - 1,),
+        )
+        return raw_delta
+
+
+class DeltaRegressionPrior(DeltaPriorModel):
+    def __init__(self, features):
+        """Construct a regression-based prior for relative fitness innovations.
+
+        Parameters
+        ----------
+        features:
+            Matrix of shape (N_variants, N_features)
+            to predict relative fitness.
+
+        Returns
+        -------
+        DeltaRegressionPrior
+        """
+
+        self.features = features  # Should be shape (N_variants, n_features)
+        self.N_features = self.features.shape[-1]
+
+    def model(self, N_variants):
+        theta = numpyro.sample(
+            "theta", dist.Normal(), sample_shape=(self.N_features,)
+        )
+        delta_loc = numpyro.deterministic(
+            "delta_loc", jnp.dot(self.features, theta)
+        )
+        delta_scale = numpyro.sample("delta_scale", dist.HalfNormal(0.1))
+        raw_delta = numpyro.sample(
+            "raw_delta",
+            dist.Normal(delta_loc, delta_scale),
+            sample_shape=(N_variants - 1,),
+        )
+        return raw_delta
+
+    def predict(self, features, samples):
+        theta = samples["theta"]
+        delta_scale = samples["delta_scale"]
+
+        # Compute mean of delta
+        delta_loc = jnp.einsum("vf, sf -> sv", features, theta)
+        prior_delta = np.random.normal(delta_loc, delta_scale)
+        return delta_loc, prior_delta
+
+
 def MLR_innovation_model(
     seq_counts,
     N,
     X,
     innovation_matrix,
+    delta_prior,
     tau=None,
     pred=False,
 ):
@@ -32,18 +112,16 @@ def MLR_innovation_model(
     # Sampling intercepts
     raw_alpha = numpyro.sample(
         "raw_alpha",
-        dist.Normal(0.0, 10.0),
+        dist.Normal(0.0, 3.0),
         sample_shape=(N_variants - 1,),
     )
     raw_alpha = jnp.append(raw_alpha, jnp.zeros(1))
 
-    # Sampling innovations
-    raw_delta = numpyro.sample(
-        "raw_delta", dist.Normal(0.0, 0.1), sample_shape=(N_variants - 1,)
-    )
+    # Sampling innovations from prior model
+    raw_delta = delta_prior.model(N_variants)
 
     # We need last variant to have 0 growth advantage
-    # so set its delta to negative of previous contributions
+    # so set its delta to negative of parent contributions
     pivot_delta = jnp.dot(raw_delta, innovation_matrix[-1, :-1])
     delta = jnp.append(raw_delta, -pivot_delta)
     numpyro.deterministic("delta", delta)
@@ -79,8 +157,7 @@ def MLR_innovation_model(
 
 class InnovationMLR(ModelSpec):
     def __init__(
-        self,
-        tau: float,
+        self, tau: float, delta_prior: Optional[DeltaPriorModel] = None
     ) -> None:
         """Construct ModelSpec for MLR allowing derived variants
         to share past fitness innovations.
@@ -90,14 +167,19 @@ class InnovationMLR(ModelSpec):
         tau:
             Assumed generation time for conversion to relative R.
 
+        prior_model:
+            Prior model for variant growtha advantage innovations.
+
         Returns
         -------
         InnovationMLR
         """
         self.tau = tau  # Fixed generation time
+        self.delta_prior = (
+            DeltaNormalPrior() if delta_prior is None else delta_prior
+        )
         self.model_fn = partial(
-            MLR_innovation_model,
-            tau=self.tau,
+            MLR_innovation_model, tau=self.tau, delta_prior=self.delta_prior
         )
 
     def augment_data(self, data: dict) -> None:
@@ -111,7 +193,8 @@ def prep_clade_list(
     raw_variant_parents: pd.DataFrame,
     var_names: Optional[List] = None,
 ):
-    """Process 'raw_variant_parents' data to nd.array showing which innovations present by variant.
+    """Process 'raw_variant_parents' data to nd.array showing
+    which innovations present by variant.
 
     Parameters
     ----------
@@ -157,7 +240,7 @@ def prep_clade_list(
             par = parent_map[par]  # New parent is parent of previous
             is_par_variant = par in var_names  # Check if should continue
         innovation_matrix[var_index, var_index] = 1
-    return innovation_matrix, parent_map
+    return innovation_matrix.astype(bool), parent_map
 
 
 class InnovationSequenceCounts(DataSpec):
