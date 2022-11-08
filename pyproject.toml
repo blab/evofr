@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "evofr"
-version = "0.1.13"
+version = "0.1.14"
 description = "Tools for evolutionary forecasting."
 authors = ["marlinfiggins <marlinfiggins@gmail.com>"]
 license = "GPL"
