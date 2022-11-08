@@ -1,3 +1,5 @@
+from functools import partial
+from typing import Optional
 import numpy as np
 from jax import vmap
 import jax.numpy as jnp
@@ -10,16 +12,22 @@ from .model_spec import ModelSpec
 from .multinomial_logistic_regression import MultinomialLogisticRegression
 
 
-def hier_MLR_numpyro(seq_counts, N, X, tau=None, pred=False, var_names=None):
+def hier_MLR_numpyro(
+    seq_counts, N, X, tau=None, pool_scale=None, pred=False, var_names=None
+):
     _, N_variants, N_groups = seq_counts.shape
     _, N_features, _ = X.shape
+
+    pool_scale = 4.0 if pool_scale is None else pool_scale
 
     # Sampling parameters
     with numpyro.plate("features", N_features, dim=-3):
         with numpyro.plate("variants", N_variants - 1, dim=-2):
             # Define loc and scale for beta for predictor and variant group
-            beta_loc = numpyro.sample("beta_loc", dist.Normal(0.0, 3.0))
-            beta_scale = numpyro.sample("beta_scale", dist.HalfNormal(1.0))
+            beta_loc = numpyro.sample("beta_loc", dist.Normal(0.0, 5.0))
+            beta_scale = numpyro.sample(
+                "beta_scale", dist.HalfNormal(pool_scale)
+            )
 
             # Use location and scale parameter to draw within group
             with numpyro.plate("group", N_groups, dim=-1):
@@ -63,10 +71,13 @@ def hier_MLR_numpyro(seq_counts, N, X, tau=None, pred=False, var_names=None):
         numpyro.deterministic(
             "ga", jnp.exp(beta[-1, :-1, :] * tau)
         )  # Last row corresponds to linear predictor / growth advantage
+        numpyro.deterministic(
+            "ga_loc", jnp.squeeze(jnp.exp(beta_loc[-1, :-1, :]) * tau)
+        )
 
 
 class HierMLR(ModelSpec):
-    def __init__(self, tau: float) -> None:
+    def __init__(self, tau: float, pool_scale: Optional[float] = None) -> None:
         """Construct ModelSpec for Hierarchial multinomial logistic regression.
 
         Parameters
@@ -74,12 +85,16 @@ class HierMLR(ModelSpec):
         tau:
             Assumed generation time for conversion to relative R.
 
+        pool_scale:
+            Prior standard deviation for pooling of growth advantages.
+
         Returns
         -------
         HierMLR
         """
         self.tau = tau  # Fixed generation time
-        self.model_fn = hier_MLR_numpyro
+        self.pool_scale = pool_scale  # Prior std for coefficients
+        self.model_fn = partial(hier_MLR_numpyro, pool_scale=self.pool_scale)
 
     @staticmethod
     def make_ols_feature(start, stop, n_groups):
