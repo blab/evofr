@@ -65,7 +65,7 @@ def _single_renewal_factory(
         numpyro.deterministic(
             "I_smooth", jnp.mean(rho_vec) * jnp.take(I_prev, obs_range, axis=0)
         )
-        numpyro.deterministic("prev", jnp.mean(rho_vec) * prev)
+        numpyro.deterministic("prev", jnp.mean(rho_vec) * jnp.take(prev, obs_range, axis=0))
 
         # Compute growth rate assuming I_{t+1} = I_{t} \exp(r_{t})
         numpyro.deterministic(
