@@ -67,22 +67,38 @@ class DeltaRegressionPrior(DeltaPriorModel):
         -------
         DeltaRegressionPrior
         """
-
-        self.features = features  # Should be shape (N_variants, n_features)
+        # Creature and process features (N_variants-1, n_features)
+        self.features = features[:-1, :]
         self.N_features = self.features.shape[-1]
+        self.is_missing = np.isnan(self.features).any(axis=1)
+        self.n_missing = self.is_missing.sum()
 
     def model(self, N_variants):
+        # Generate coefficients for features
         theta = numpyro.sample(
             "theta", dist.Normal(), sample_shape=(self.N_features,)
         )
-        delta_loc = numpyro.deterministic(
-            "delta_loc", jnp.dot(self.features, theta)
+
+        # Generate relative fitness where features present
+        delta_loc_present = jnp.dot(self.features[~self.is_missing, :], theta)
+        # Generate relative fitness where features missing
+        delta_loc_missing = numpyro.sample(
+            "delta_loc_missing",
+            dist.Normal(0.0, 3.0),
+            sample_shape=(self.n_missing,),
         )
+
+        # Combine delta_loc for missing and present predictors
+        delta_loc = jnp.empty(N_variants-1)
+        delta_loc = delta_loc.at[~self.is_missing].set(delta_loc_present)
+        delta_loc = delta_loc.at[self.is_missing].set(delta_loc_missing)
+        numpyro.deterministic("delta_loc", delta_loc)
+
         delta_scale = numpyro.sample("delta_scale", dist.HalfNormal(0.1))
+
         raw_delta = numpyro.sample(
             "raw_delta",
-            dist.Normal(delta_loc, delta_scale),
-            sample_shape=(N_variants - 1,),
+            dist.Normal(delta_loc, delta_scale)
         )
         return raw_delta
 
@@ -153,6 +169,7 @@ def MLR_innovation_model(
     # Compute growth advantage from model
     if tau is not None:
         numpyro.deterministic("ga", jnp.exp(raw_beta * tau)[:-1])
+        numpyro.deterministic("ga_delta", jnp.exp(delta * tau))
 
 
 class InnovationMLR(ModelSpec):
