@@ -72,7 +72,7 @@ def hier_MLR_numpyro(
             "ga", jnp.exp(beta[-1, :-1, :] * tau)
         )  # Last row corresponds to linear predictor / growth advantage
         numpyro.deterministic(
-            "ga_loc", jnp.squeeze(jnp.exp(beta_loc[-1, :-1, :]) * tau)
+            "ga_loc", jnp.squeeze(jnp.exp(beta_loc[-1, :, :]) * tau)
         )
 
 
