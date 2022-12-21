@@ -6,3 +6,4 @@ from .piantham_model import *
 from .mlr_nowcast import *
 from .mlr_spline import *
 from .mlr_innovation import *
+from .mlr_migration import MLR_Migration, MLR_mig_sim
