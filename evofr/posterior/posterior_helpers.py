@@ -149,6 +149,8 @@ def get_growth_advantage(samples, data, ps, name, rel_to=None):
 
 class EvofrEncoder(json.JSONEncoder):
     def default(self, obj):
+        if isinstance(obj, np.nan):
+            return None
         if isinstance(obj, np.integer):
             return int(obj)
         if isinstance(obj, np.floating):
@@ -448,5 +450,5 @@ def combine_sites_tidy(tidy_dicts):
 
 def save_json(out: dict, path) -> None:
     with open(path, "w") as f:
-        json.dump(out, f, cls=EvofrEncoder)
+        json.dump(out, f, allow_nan=False, cls=EvofrEncoder)
     return None
