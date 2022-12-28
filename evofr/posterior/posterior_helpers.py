@@ -149,8 +149,6 @@ def get_growth_advantage(samples, data, ps, name, rel_to=None):
 
 class EvofrEncoder(json.JSONEncoder):
     def default(self, obj):
-        if np.isnan(obj):
-            return None
         if isinstance(obj, np.integer):
             return int(obj)
         if isinstance(obj, np.floating):
