@@ -7,14 +7,57 @@ from numpyro.infer.util import Predictive, initialize_model
 import blackjax
 
 from evofr.data.data_spec import DataSpec
+from evofr.infer.backends import Backend
 from evofr.models.model_spec import ModelSpec
 from evofr.posterior.posterior_handler import PosteriorHandler
 
 
-# TODO: Make this a shared utility later
-def newkey(key):
-    key, subkey = random.split(key)
-    return subkey
+class BlackJaxNumpyro:
+    @staticmethod
+    def init(key, model, data):
+        key, subkey = random.split(key)
+        init_parms, potential_fn_gen, *_ = initialize_model(
+            subkey, model, model_kwargs=data, dynamic_args=True
+        )
+
+        def logdensity_fn(position):
+            return -potential_fn_gen(**data)(position)
+
+        initial_position = init_parms.z
+        return initial_position, logdensity_fn
+
+    @staticmethod
+    def predict(key, model, data, samples):
+        predictive = Predictive(model, samples)
+        key, subkey = random.split(key)
+        samples_pred = predictive(subkey, pred=True, **data)
+        return {**samples, **samples_pred}
+
+
+class BlackJaxProvided:
+    @staticmethod
+    def init(key, model: ModelSpec, data: Dict):
+        # Find density function with model_spec
+        if hasattr(model, "logdensity_fn_gen"):
+            logdensity_fn = model.logdensity_fn_gen(data)
+        elif hasattr(model, "logdensity_fn"):
+            logdensity_fn = model.logdensity_fn
+        else:
+            logdensity_fn = lambda _: None
+        if hasattr(model, "initial_position"):
+            init_position = model.initial_position
+        elif hasattr(model, "initial_position_fn"):
+            init_position = model.initial_position_fn(key)
+        else:
+            init_position = None
+        return init_position, logdensity_fn
+
+    @staticmethod
+    def predict(key, model: ModelSpec, data: Dict, samples: Dict) -> Dict:
+        if not hasattr(model, "pred_fn"):
+            return samples
+        samples_pred = model.pred_fn(key, samples, data)
+        return {**samples, **samples_pred}
 
 
 class BlackJaxHandler:
@@ -36,16 +79,54 @@ class BlackJaxHandler:
         _, (states, infos) = jax.lax.scan(one_step, initial_state, keys)
         return states, infos
 
-    def numpyro_init(self, model, data):
-        init_parms, potential_fn_gen, *_ = initialize_model(
-            newkey(self.rng_key), model, model_kwargs=data, dynamic_args=True
-        )
+    @staticmethod
+    def _initialize(
+        key,
+        model: ModelSpec,
+        data: Dict,
+        backend: Optional[Backend] = None,
+    ):
+        # Check if model has a backend
+        if hasattr(model, "backend") and backend is None:
+            backend = model.backend
 
-        def logdenisty_fn(position):
-            return -potential_fn_gen(**data)(position)
+        # If no backend provided or defined elsewhere
+        # default to numpyro
+        if backend is None:
+            return BlackJaxNumpyro.init(key, model.model_fn, data)
 
-        initial_position = init_parms.z
-        return initial_position, logdenisty_fn
+        # Otherwise use provided backend
+        if backend == Backend.NUMPYRO:
+            return BlackJaxNumpyro.init(key, model.model_fn, data)
+
+        if backend == Backend.PROVIDED:
+            return BlackJaxProvided.init(key, model, data)
+
+        return None, lambda _: None
+
+    @staticmethod
+    def _predict(
+        key,
+        model: ModelSpec,
+        data: Dict,
+        samples: Dict,
+        backend: Optional[Backend] = None,
+    ):
+        # Check if model has a backend
+        if hasattr(model, "backend") and backend is None:
+            backend = model.backend
+
+        # Otherwise use suggested
+        if backend == Backend.NUMPYRO:
+            return BlackJaxNumpyro.predict(key, model.model_fn, data, samples)
+
+        if backend == Backend.PROVIDED:
+            return BlackJaxProvided.predict(key, model, data, samples)
+
+        # or default to numpyro
+        if backend is None:
+            return BlackJaxNumpyro.predict(key, model.model_fn, data, samples)
+        return dict()
 
     def run_warmup(
         self, initial_position, logdensity_fn: Callable, num_warmup: int
@@ -57,19 +138,19 @@ class BlackJaxHandler:
             **self.kernel_kwargs,
             num_steps=num_warmup
         )
-        last_state, kernel, _ = adapt.run(
-            newkey(self.rng_key), initial_position
-        )
+        self.rng_key, key = random.split(self.rng_key)
+        last_state, kernel, _ = adapt.run(key, initial_position)
         return last_state, kernel
 
     def fit(
         self,
-        model: Callable,
+        model: ModelSpec,
         data: Dict,
         num_warmup: int,
         num_samples: int,
     ):
-        initial_position, logdensity_fn = self.numpyro_init(model, data)
+        self.rng_key, key = random.split(self.rng_key)
+        initial_position, logdensity_fn = self._initialize(key, model, data)
 
         # Run adapt window
         if num_warmup > 0:
@@ -81,20 +162,19 @@ class BlackJaxHandler:
             starting_state = kernel.init(initial_position)
 
         # Run sampling
+        self.rng_key, key = random.split(self.rng_key)
         self.states, self.infos = self.inference_loop(
-            newkey(self.rng_key), kernel, starting_state, num_samples
+            key, kernel, starting_state, num_samples
         )
 
     @property
     def samples(self) -> Dict:
-        if self.state is not None:
-            return self.state.position
+        if self.states is not None:
+            return self.states.position
         return dict()
 
-    def predict(self, model, data):
-        predictive = Predictive(model, self.states.position)
-        samples_pred = predictive(newkey(self.rng_key), pred=True, **data)
-        return {**self.states.position, **samples_pred}
+    def predict(self, model: ModelSpec, data: Dict) -> Dict:
+        return self._predict(self.rng_key, model, data, self.samples)
 
 
 class InferBlackJax:
@@ -147,10 +227,8 @@ class InferBlackJax:
         model.augment_data(input)
 
         # Fit model and retrieve samples
-        self.handler.fit(
-            model.model_fn, input, self.num_warmup, self.num_samples
-        )
-        samples = self.handler.predict(model.model_fn, input)
+        self.handler.fit(model, input, self.num_warmup, self.num_samples)
+        samples = self.handler.predict(model, input)
 
         # Create object to hold posterior samples and data
         self.posterior = PosteriorHandler(
