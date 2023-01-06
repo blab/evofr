@@ -8,6 +8,21 @@ import numpyro.distributions as dist
 from .model_spec import ModelSpec
 
 
+def simulate_MLR_freq(delta, freq0, tau, max_time):
+    times = np.arange(max_time)
+    ufreq = freq0 * np.exp(delta * times[..., None] / tau)
+    return ufreq / ufreq.sum(axis=-1)[..., None]
+
+
+def simulate_MLR(delta, freq0, tau, Ns):
+    max_time = len(Ns)
+    freq = simulate_MLR_freq(delta, freq0, tau, max_time)
+    seq_counts = [
+        np.random.multinomial(Ns[t], freq[t, :]) for t in range(max_time)
+    ]
+    return np.stack(seq_counts)
+
+
 def MLR_numpyro(seq_counts, N, X, tau=None, pred=False, var_names=None):
     _, N_variants = seq_counts.shape
     _, N_features = X.shape

@@ -3,6 +3,59 @@ from .data_spec import DataSpec
 import pandas as pd
 from typing import List, Optional
 
+VARIANT_NAMES = ["Variant", "other"]
+START_DATE = pd.to_datetime("2022-01-01")
+
+
+def variant_counts_to_dataframe(
+    var_counts,
+    var_names: List[str] = VARIANT_NAMES,
+    start_date=START_DATE,
+):
+    """Convert matrix of variant counts to pandas dataframe
+    for input to ef.VariantFrequencies.
+
+    Parameters
+    ----------
+    var_counts:
+        nd.array of counts var_counts[t,v] of variant v on day t.
+    variant_names:
+        List of variant names to assign each column.
+    start_date:
+        Pandas datetime to use as first date.
+
+    Returns
+    -------
+    seq_counts
+    """
+    T, V = var_counts.shape
+
+    assert V <= len(var_names), "More cols present in var_counts than names"
+
+    sequences = []
+    variant = []
+    dates = []
+
+    for time in range(T):
+        # Add wildtype and variant counts
+        sequences.extend(list(var_counts[time, :]))
+
+        # Add variant labels
+        variant.extend(var_names[:V])
+
+        # Add dates
+        dates.extend([start_date + pd.to_timedelta(time, unit="d")] * V)
+
+    df = pd.DataFrame(
+        {
+            "variant": variant,
+            "sequences": sequences,
+            "date": dates,
+        }
+    )
+
+    return df[df.sequences > 0].reset_index()
+
 
 class VariantFrequencies(DataSpec):
     def __init__(
