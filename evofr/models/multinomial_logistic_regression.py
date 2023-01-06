@@ -10,7 +10,7 @@ from .model_spec import ModelSpec
 
 def simulate_MLR_freq(delta, freq0, tau, max_time):
     times = np.arange(max_time)
-    ufreq = freq0 * np.exp(delta * times[..., None] / tau)
+    ufreq = freq0 * np.exp(np.log(delta) * times[..., None] / tau)
     return ufreq / ufreq.sum(axis=-1)[..., None]
 
 
