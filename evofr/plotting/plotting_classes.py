@@ -7,6 +7,7 @@ from evofr.plotting.plot_functions import (
     add_dates_sep,
     plot_R_censored,
     plot_cases,
+    plot_ga_time_censored,
     plot_growth_advantage,
     plot_observed_frequency,
     plot_posterior_I,
@@ -153,31 +154,51 @@ class GrowthAdvantagePlot(EvofrPlot):
         data: Optional[DataSpec] = None,
         color_map: Optional[dict] = None,
         cmap_name: Optional[str] = None,
+        time_varying: Optional[bool] = False,
+        thres: Optional[float] = None,
+        plot_pivot_line: Optional[bool] = True,
     ):
         super().__init__(posterior=posterior, samples=samples, data=data)
         self.color_map, self.colors = get_colors(
             self.data.var_names, color_map, cmap_name
         )
+        self.thres = thres if thres is not None else 0.01
+        self.time_varying = time_varying
+        self.plot_pivot_line = plot_pivot_line
 
     def plot(
         self,
         ax=None,
         figsize: Optional[Tuple] = None,
+        date_sep: Optional[int] = None,
     ):
-        # TODO: Add support for time-varying growth advantages
         if ax is None:
             # Create a figure and axis
             fig, gs = create_empty_gridspec(1, 1, figsize=figsize)
             ax = fig.add_subplot(gs[0])
 
-        plot_growth_advantage(
-            ax,
-            self.samples,
-            self.data,
-            DEFAULT_PS,
-            DEFAULT_ALPHAS,
-            self.colors,
-        )
+        if self.time_varying:
+            plot_ga_time_censored(
+                ax,
+                self.samples,
+                DEFAULT_PS,
+                DEFAULT_ALPHAS,
+                self.colors,
+                thres=self.thres,
+                plot_pivot_line=self.plot_pivot_line,
+            )
+            if hasattr(self.data, "dates"):
+                create_date_axis(ax, self.data.dates, date_sep)
+        else:
+            plot_growth_advantage(
+                ax,
+                self.samples,
+                self.data,
+                DEFAULT_PS,
+                DEFAULT_ALPHAS,
+                self.colors,
+                plot_pivot_line=self.plot_pivot_line,
+            )
         ax.set_ylabel("Growth advantage")
         self.ax = ax
         return self
@@ -192,12 +213,14 @@ class RtPlot(EvofrPlot):
         color_map: Optional[dict] = None,
         cmap_name: Optional[str] = None,
         thres: Optional[float] = None,
+        plot_neutral_line: Optional[bool] = True,
     ):
         super().__init__(posterior=posterior, samples=samples, data=data)
         self.color_map, self.colors = get_colors(
             self.data.var_names, color_map, cmap_name
         )
         self.thres = thres if thres is not None else 0.01
+        self.plot_neutral_line = plot_neutral_line
 
     def plot(
         self,
@@ -218,6 +241,7 @@ class RtPlot(EvofrPlot):
             DEFAULT_ALPHAS,
             self.colors,
             thres=0.001,
+            plot_neutral_line=self.plot_neutral_line,
         )
         ax.set_ylabel("Effective Reproduction number")  # Making ylabel
         if hasattr(self.data, "dates"):
