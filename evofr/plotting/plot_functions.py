@@ -420,3 +420,32 @@ def plot_ppc_cases(
             t, V[i][0, :], V[i][1, :], color=color, alpha=alphas[i]
         )
     ax.plot(t, med, color=color)
+
+
+def plot_time_varying_variant(
+    ax,
+    site,
+    samples,
+    ps: List[float],
+    alphas: List[float],
+    colors: List[str],
+    forecast: Optional[bool] = False,
+):
+    t, med, quants = prep_posterior_for_plot(
+        site, samples, ps, forecast=forecast
+    )
+    plot_posterior_time(ax, t, med, quants, alphas, colors)
+
+
+def plot_time_varying_single(
+    ax, site, samples, ps: List[float], alphas: List[float], color: str
+):
+    med, V = get_quantiles(samples, ps, site)
+    t = jnp.arange(0, V[-1].shape[-1], 1)
+
+    # Make figure
+    for i in range(len(ps)):
+        ax.fill_between(
+            t, V[i][0, :], V[i][1, :], color=color, alpha=alphas[i]
+        )
+    ax.plot(t, med, color=color)

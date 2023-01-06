@@ -13,6 +13,8 @@ from evofr.plotting.plot_functions import (
     plot_posterior_I,
     plot_posterior_frequency,
     plot_ppc_frequency,
+    plot_time_varying_single,
+    plot_time_varying_variant,
 )
 
 from evofr.posterior.posterior_handler import PosteriorHandler
@@ -259,11 +261,13 @@ class IncidencePlot(EvofrPlot):
         data: Optional[DataSpec] = None,
         color_map: Optional[dict] = None,
         cmap_name: Optional[str] = None,
+        color: str = "grey",
     ):
         super().__init__(posterior=posterior, samples=samples, data=data)
         self.color_map, self.colors = get_colors(
             self.data.var_names, color_map, cmap_name
         )
+        self.color = color
 
     def plot(
         self,
@@ -271,6 +275,7 @@ class IncidencePlot(EvofrPlot):
         figsize: Optional[Tuple] = None,
         cases: Optional[bool] = True,
         date_sep: Optional[int] = None,
+        total: bool = False,
     ):
         if ax is None:
             # Create a figure and axis
@@ -278,18 +283,81 @@ class IncidencePlot(EvofrPlot):
             ax = fig.add_subplot(gs[0])
 
         # Plot posterior variant specific incidence
-        plot_posterior_I(
-            ax,
-            self.samples,
-            DEFAULT_PS,
-            DEFAULT_ALPHAS,
-            self.colors,
-        )
+        if total:
+            plot_time_varying_single(
+                ax,
+                "total_smooth_prev",
+                self.samples,
+                DEFAULT_PS,
+                DEFAULT_ALPHAS,
+                self.color,
+            )
+        else:
+            plot_posterior_I(
+                ax,
+                self.samples,
+                DEFAULT_PS,
+                DEFAULT_ALPHAS,
+                self.colors,
+            )
 
         if cases:
             plot_cases(ax, self.data)
         if hasattr(self.data, "dates"):
             create_date_axis(ax, self.data.dates, date_sep)
+        self.ax = ax
+        return self
+
+
+class TimeVaryingPlot(EvofrPlot):
+    def __init__(
+        self,
+        site: str,
+        posterior: Optional[PosteriorHandler] = None,
+        samples: Optional[Dict] = None,
+        data: Optional[DataSpec] = None,
+        by_variant: Optional[bool] = None,
+        color_map: Optional[dict] = None,
+        cmap_name: Optional[str] = None,
+        color: Optional[str] = None,
+    ):
+        super().__init__(posterior=posterior, samples=samples, data=data)
+
+        self.site = site
+
+        if by_variant is None:
+            by_variant = self.samples[self.site].ndim > 2
+
+        if by_variant:
+            self.color_map, self.colors = get_colors(
+                self.data.var_names, color_map, cmap_name
+            )
+            self.plot_fn = plot_time_varying_variant
+        else:
+            self.colors = "grey" if color is None else color
+            self.plot_fn = plot_time_varying_single
+
+    def plot(
+        self,
+        ax=None,
+        figsize: Optional[Tuple] = None,
+        date_sep: Optional[int] = None,
+    ):
+        if ax is None:
+            # Create a figure and axis
+            fig, gs = create_empty_gridspec(1, 1, figsize=figsize)
+            ax = fig.add_subplot(gs[0])
+        self.plot_fn(
+            ax,
+            self.site,
+            self.samples,
+            DEFAULT_PS,
+            DEFAULT_ALPHAS,
+            self.colors,
+        )
+        if hasattr(self.data, "dates"):
+            create_date_axis(ax, self.data.dates, date_sep)
+
         self.ax = ax
         return self
 
