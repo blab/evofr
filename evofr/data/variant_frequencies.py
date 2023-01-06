@@ -54,7 +54,7 @@ def variant_counts_to_dataframe(
         }
     )
 
-    return df[df.sequences > 0].reset_index()
+    return df[df.sequences > 0].reset_index(drop=True)
 
 
 class VariantFrequencies(DataSpec):
