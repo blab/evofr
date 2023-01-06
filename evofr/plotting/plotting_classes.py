@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from evofr.data.data_helpers import expand_dates
@@ -43,6 +43,29 @@ def create_date_axis(ax, plot_dates, date_sep=None, forecast_L=0):
     return None
 
 
+def get_n_colors(n, cmap=None):
+    """Returns a list of color of length n"""
+    cmap = "tab20" if cmap is None else cmap
+    cmap_fn = plt.cm.get_cmap(cmap, n)
+    return [cmap_fn(i) for i in range(n)]
+
+
+def get_colors(
+    var_names: List[str],
+    color_map: Optional[Dict] = None,
+    cmap_name: Optional[str] = None,
+):
+    # If no color_map, generate based on color mapping
+    if color_map is None:
+        n_var = len(var_names)
+        colors = get_n_colors(n_var, cmap_name)
+        color_map = {v: c for v, c in zip(var_names, colors)}
+    else:
+        # Otherwise generate colors from provided mapping
+        colors = [color_map[v] for v in var_names]
+    return color_map, colors
+
+
 class EvofrPlot:
     def __init__(
         self,
@@ -65,9 +88,12 @@ class FrequencyPlot(EvofrPlot):
         samples: Optional[Dict] = None,
         data: Optional[DataSpec] = None,
         color_map: Optional[dict] = None,
+        cmap_name: Optional[str] = None,
     ):
         super().__init__(posterior=posterior, samples=samples, data=data)
-        self.color_map = color_map if color_map is not None else dict()
+        self.color_map, self.colors = get_colors(
+            self.data.var_names, color_map, cmap_name
+        )
 
     def plot(
         self,
@@ -85,10 +111,6 @@ class FrequencyPlot(EvofrPlot):
             fig, gs = create_empty_gridspec(1, 1, figsize=figsize)
             ax = fig.add_subplot(gs[0])
 
-        colors = [
-            self.color_map[v] for v in self.data.var_names
-        ]  # Mapping colors to observed variants
-
         # Plot predicted frequencies
         if posterior:
             plot_posterior_frequency(
@@ -96,7 +118,7 @@ class FrequencyPlot(EvofrPlot):
                 self.samples,
                 DEFAULT_PS,
                 DEFAULT_ALPHAS,
-                colors,
+                self.colors,
                 forecast=forecast,
             )
 
@@ -107,18 +129,20 @@ class FrequencyPlot(EvofrPlot):
                 self.data,
                 DEFAULT_PS,
                 DEFAULT_ALPHAS,
-                colors,
+                self.colors,
             )
 
         if observed:
             plot_observed_frequency(
-                ax, self.data, colors
+                ax, self.data, self.colors
             )  # Plot observed frequencies
 
         if hasattr(self.data, "dates"):
             create_date_axis(ax, self.data.dates, date_sep, forecast_L)
         ax.set_ylabel("Variant frequency")  # Making ylabel
-        return ax
+
+        self.ax = ax
+        return self
 
 
 class GrowthAdvantagePlot(EvofrPlot):
@@ -128,9 +152,12 @@ class GrowthAdvantagePlot(EvofrPlot):
         samples: Optional[Dict] = None,
         data: Optional[DataSpec] = None,
         color_map: Optional[dict] = None,
+        cmap_name: Optional[str] = None,
     ):
         super().__init__(posterior=posterior, samples=samples, data=data)
-        self.color_map = color_map if color_map is not None else dict()
+        self.color_map, self.colors = get_colors(
+            self.data.var_names, color_map, cmap_name
+        )
 
     def plot(
         self,
@@ -143,15 +170,17 @@ class GrowthAdvantagePlot(EvofrPlot):
             fig, gs = create_empty_gridspec(1, 1, figsize=figsize)
             ax = fig.add_subplot(gs[0])
 
-        colors = [
-            self.color_map[v] for v in self.data.var_names
-        ]  # Mapping colors to observed variants
-
         plot_growth_advantage(
-            ax, self.samples, self.data, DEFAULT_PS, DEFAULT_ALPHAS, colors
+            ax,
+            self.samples,
+            self.data,
+            DEFAULT_PS,
+            DEFAULT_ALPHAS,
+            self.colors,
         )
         ax.set_ylabel("Growth advantage")
-        return ax
+        self.ax = ax
+        return self
 
 
 class RtPlot(EvofrPlot):
@@ -161,10 +190,13 @@ class RtPlot(EvofrPlot):
         samples: Optional[Dict] = None,
         data: Optional[DataSpec] = None,
         color_map: Optional[dict] = None,
+        cmap_name: Optional[str] = None,
         thres: Optional[float] = None,
     ):
         super().__init__(posterior=posterior, samples=samples, data=data)
-        self.color_map = color_map if color_map is not None else dict()
+        self.color_map, self.colors = get_colors(
+            self.data.var_names, color_map, cmap_name
+        )
         self.thres = thres if thres is not None else 0.01
 
     def plot(
@@ -179,23 +211,20 @@ class RtPlot(EvofrPlot):
             fig, gs = create_empty_gridspec(1, 1, figsize=figsize)
             ax = fig.add_subplot(gs[0])
 
-        colors = [
-            self.color_map[v] for v in self.data.var_names
-        ]  # Mapping colors to observed variants
-
         plot_R_censored(
             ax,
             self.samples,
             DEFAULT_PS,
             DEFAULT_ALPHAS,
-            colors,
+            self.colors,
             thres=0.001,
         )
         ax.set_ylabel("Effective Reproduction number")  # Making ylabel
         if hasattr(self.data, "dates"):
             create_date_axis(ax, self.data.dates, date_sep)
 
-        return ax
+        self.ax = ax
+        return self
 
 
 class IncidencePlot(EvofrPlot):
@@ -205,9 +234,12 @@ class IncidencePlot(EvofrPlot):
         samples: Optional[Dict] = None,
         data: Optional[DataSpec] = None,
         color_map: Optional[dict] = None,
+        cmap_name: Optional[str] = None,
     ):
         super().__init__(posterior=posterior, samples=samples, data=data)
-        self.color_map = color_map if color_map is not None else dict()
+        self.color_map, self.colors = get_colors(
+            self.data.var_names, color_map, cmap_name
+        )
 
     def plot(
         self,
@@ -221,24 +253,21 @@ class IncidencePlot(EvofrPlot):
             fig, gs = create_empty_gridspec(1, 1, figsize=figsize)
             ax = fig.add_subplot(gs[0])
 
-        colors = [
-            self.color_map[v] for v in self.data.var_names
-        ]  # Mapping colors to observed variants
-
         # Plot posterior variant specific incidence
         plot_posterior_I(
             ax,
             self.samples,
             DEFAULT_PS,
             DEFAULT_ALPHAS,
-            colors,
+            self.colors,
         )
 
         if cases:
             plot_cases(ax, self.data)
         if hasattr(self.data, "dates"):
             create_date_axis(ax, self.data.dates, date_sep)
-        return ax
+        self.ax = ax
+        return self
 
 
 class PatchLegend:
