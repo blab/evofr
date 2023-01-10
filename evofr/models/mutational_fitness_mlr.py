@@ -115,11 +115,20 @@ class MutationalFitnessMLR(ModelSpec):
 
 
 def prep_mutations(raw_mutations, var_names):
-    # Loop over variants, add mutations
-    # (N_variants, N_mutations)
-    mut_names = []
-    mutation_presence = []
-    return mut_names, mutation_presence
+    # Fitler to only variants in var_names
+    rw = raw_mutations[raw_mutations.variant.isin(var_names)]
+
+    # Find mutations of interest
+    mutations = rw.mutations.unique().values
+    num_variants, num_muts = len(var_names), mutations.size
+    mut_matrix = np.zeros((num_variants, num_muts))
+    for v, variant in enumerate(var_names):
+        v_muts = rw[rw.variant == variant].mutations.values
+        mut_matrix[v, :] = np.isin(mutations, v_muts)
+
+    # Drop rows that are present in everything...
+    is_fixed = mut_matrix.sum(axis=0) == num_variants
+    return mutations[~is_fixed], mut_matrix[:, ~is_fixed]
 
 
 class MutationalFitnessSequenceCounts(DataSpec):
