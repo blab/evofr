@@ -62,6 +62,14 @@ v_fs_I = jit(
 )
 
 
+@partial(jit, static_argnums=5)
+def forward_simulate_I_and_prev(m, R, gen_rev, delays, inf_period, seed_L):
+    infections = get_infections_intros(m, R, gen_rev, seed_L)
+    delayed_infections, _ = lax.scan(_apply_delays, init=infections, xs=delays)
+    prev = apply_delay(infections, inf_period)
+    return delayed_infections, prev
+
+
 @partial(jit, static_argnums=1)
 def reporting_to_vec(rho, L):
     return jnp.pad(rho, (0, L - len(rho)), mode="wrap")

@@ -3,10 +3,11 @@ import jax.numpy as jnp
 import numpy as np
 
 from evofr.models.model_spec import ModelSpec
+from evofr.models.renewal_model.model_helpers import to_survivor_function
 from .basis_functions import BasisFunction, Spline
 
 from .LAS import LaplaceRandomWalk
-from .model_functions import forward_simulate_I, reporting_to_vec
+from .model_functions import forward_simulate_I_and_prev, reporting_to_vec
 from .model_options import NegBinomCases
 
 import numpyro
@@ -16,6 +17,7 @@ import numpyro.distributions as dist
 def _single_renewal_factory(
     g_rev,
     delays,
+    inf_period,
     seed_L,
     forecast_L,
     CaseLik=None,
@@ -45,7 +47,7 @@ def _single_renewal_factory(
             R = jnp.hstack((_R, R_forecast))
 
         # Getting initial conditions
-        I0 = numpyro.sample("I0", dist.Uniform(0.0, 300_000.0))
+        I0 = numpyro.sample("I0", dist.LogNormal(0.0, 5.0))
         intros = jnp.zeros((T + seed_L + forecast_L,))
         intros = intros.at[np.arange(seed_L)].set(I0 * jnp.ones(seed_L))
 
@@ -54,16 +56,16 @@ def _single_renewal_factory(
             rho = numpyro.sample("rho", dist.Beta(5.0, 5.0))
         rho_vec = reporting_to_vec(rho, T)
 
-        I_prev = jnp.clip(
-            forward_simulate_I(intros, R, g_rev, delays, seed_L),
-            a_min=1e-12,
-            a_max=1e25,
+        I_prev, prev = forward_simulate_I_and_prev(
+            intros, R, g_rev, delays, inf_period, seed_L
         )
+        I_prev = jnp.clip(I_prev, a_min=1e-12, a_max=1e25)
 
         # Smooth trajectory for plotting
         numpyro.deterministic(
             "I_smooth", jnp.mean(rho_vec) * jnp.take(I_prev, obs_range, axis=0)
         )
+        numpyro.deterministic("prev", jnp.mean(rho_vec) * jnp.take(prev, obs_range, axis=0))
 
         # Compute growth rate assuming I_{t+1} = I_{t} \exp(r_{t})
         numpyro.deterministic(
@@ -88,7 +90,7 @@ def _single_renewal_factory(
         if forecast_L > 0:
             I_forecast = numpyro.deterministic(
                 "I_smooth_forecast",
-                jnp.mean(rho_vec) * I_prev[(seed_L + T):],
+                jnp.mean(rho_vec) * I_prev[(seed_L + T) :],
             )
             numpyro.deterministic(
                 "r_forecast",
@@ -105,12 +107,18 @@ class SingleRenewalModel(ModelSpec):
         delays,
         seed_L: int,
         forecast_L: int,
+        inf_period=None,
         k: Optional[int] = None,
         CLik=None,
         basis_fn: Optional[BasisFunction] = None,
     ):
         self.g_rev = jnp.flip(g, axis=-1)
         self.delays = delays
+        self.inf_period = (
+            to_survivor_function(inf_period)
+            if inf_period is not None
+            else jnp.ones(self.g_rev.shape[0])
+        )
         self.seed_L = seed_L
         self.forecast_L = forecast_L
 
@@ -128,6 +136,7 @@ class SingleRenewalModel(ModelSpec):
         self.model_fn = _single_renewal_factory(
             self.g_rev,
             self.delays,
+            self.inf_period,
             self.seed_L,
             self.forecast_L,
             self.CLik,

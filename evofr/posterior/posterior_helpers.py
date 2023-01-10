@@ -448,5 +448,5 @@ def combine_sites_tidy(tidy_dicts):
 
 def save_json(out: dict, path) -> None:
     with open(path, "w") as f:
-        json.dump(out, f, cls=EvofrEncoder)
+        json.dump(out, f, allow_nan=False, cls=EvofrEncoder)
     return None

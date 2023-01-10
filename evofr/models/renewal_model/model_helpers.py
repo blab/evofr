@@ -38,6 +38,8 @@ def get_standard_delays():
     delays = pad_delays(delays)
     return gen, delays
 
+def to_survivor_function(delay):
+    return 1. - jnp.cumsum(delay)
 
 def is_obs_idx(v):
     return jnp.where(jnp.isnan(v), jnp.zeros_like(v), jnp.ones_like(v))

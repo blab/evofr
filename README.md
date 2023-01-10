@@ -2,6 +2,16 @@
 
 ## Installation
 
+The latest release of this package can be installed with:
+
+```
+pip install evofr
+
+```
+
+
+## Installing locally
+
 The package can be built locally by running
 
 ```

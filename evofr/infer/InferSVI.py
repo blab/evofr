@@ -114,5 +114,8 @@ def init_to_MAP(
     MAP = infer_map.fit(model, data)
 
     # Return initilization strategy for MCMC and MAP estimates
-    samples = {k: jnp.squeeze(v) for k, v in MAP.samples.items()}
+    samples = {
+        k: jnp.squeeze(v, axis=0) if v.shape[0] == 1 else v
+        for k, v in MAP.samples.items()
+    }
     return init_to_value(values=samples), MAP
