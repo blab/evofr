@@ -39,15 +39,15 @@ def mutational_fitness_model(
         )
         * 10.0
     )
-    raw_alpha = jnp.concatenate((raw_alpha, 0.0))
+    raw_alpha = jnp.append(raw_alpha, 0.0)
 
     # Sampling mutation innovations
     raw_delta = numpyro.sample(
-        "raw_delta", dist.Normal(0.0, 1.0), sample_shape=(1, N_mutations)
+        "raw_delta", dist.Normal(0.0, 1.0), sample_shape=(N_mutations,)
     )
     # Innovations to beta
     raw_beta = jnp.dot(mutation_presence, raw_delta)
-    # raw_beta = raw_beta - raw_beta[:, -1]
+    raw_beta = raw_beta - raw_beta[-1]
 
     # How do we ensure identifiablity?
     # We need to make sure everything is relative to pivot
@@ -55,11 +55,8 @@ def mutational_fitness_model(
     # We can have effect by lineage for re-occuring mutations :-D.
 
     beta = numpyro.deterministic(
-        "beta",
-        jnp.column_stack(
-            (jnp.row_stack((raw_alpha, raw_beta)), jnp.zeros(2))
-        ),  # All parameters are relative to last column / variant
-    )
+        "beta", jnp.row_stack((raw_alpha, raw_beta))
+    )  # All parameters are relative to last column / variant
 
     logits = jnp.dot(X, beta)  # Logit frequencies by variant
 
@@ -74,7 +71,7 @@ def mutational_fitness_model(
 
     # Compute growth advantage from model
     if tau is not None:
-        numpyro.deterministic("ga", jnp.exp(raw_beta * tau))
+        numpyro.deterministic("ga", jnp.exp(raw_beta * tau)[:-1])
 
 
 class MutationalFitnessMLR(ModelSpec):
@@ -119,11 +116,11 @@ def prep_mutations(raw_mutations, var_names):
     rw = raw_mutations[raw_mutations.variant.isin(var_names)]
 
     # Find mutations of interest
-    mutations = rw.mutations.unique().values
+    mutations = rw["mutation"].unique()
     num_variants, num_muts = len(var_names), mutations.size
     mut_matrix = np.zeros((num_variants, num_muts))
     for v, variant in enumerate(var_names):
-        v_muts = rw[rw.variant == variant].mutations.values
+        v_muts = rw[rw.variant == variant]["mutation"].values
         mut_matrix[v, :] = np.isin(mutations, v_muts)
 
     # Drop rows that are present in everything...
@@ -140,7 +137,8 @@ class MutationalFitnessSequenceCounts(DataSpec):
         var_names: Optional[List] = None,
         pivot: Optional[str] = None,
     ):
-        """Construct a data specification for handling variant frequencies.
+        """Construct a data specification for handling variant frequencies
+        for mutational fitness models.
 
          Parameters
          ----------
@@ -149,10 +147,11 @@ class MutationalFitnessSequenceCounts(DataSpec):
              'variant', and date'.
 
          raw_mutations:
-             ...
+             a dataframe containing variants and their mutations with columns
+             'variant' and 'mutatation'.
 
          date_to_index:
-             optional dictionary for mapping calender dates to nd.array indices.
+             optional dictionary for mapping calender dates to nd.array indices
 
          var_names:
              optional list containing names of variants to be present
