@@ -17,18 +17,27 @@ class BlackJaxNumpyro:
     def init(key, model, data):
         key, subkey = random.split(key)
         init_parms, potential_fn_gen, *_ = initialize_model(
-            subkey, model, model_kwargs=data, dynamic_args=True
+            subkey, model.model_fn, model_kwargs=data, dynamic_args=True
         )
 
         def logdensity_fn(position):
             return -potential_fn_gen(**data)(position)
 
-        initial_position = init_parms.z
+        # Define initial position
+        if hasattr(model, "initial_position"):
+            initial_position = {
+                site: model.initial_position[site]
+                for site in init_parms.z.keys()
+            }
+            # initial_position = model.initial_position
+        else:
+            initial_position = init_parms.z
+
         return initial_position, logdensity_fn
 
     @staticmethod
     def predict(key, model, data, samples):
-        predictive = Predictive(model, samples)
+        predictive = Predictive(model.model_fn, samples)
         key, subkey = random.split(key)
         samples_pred = predictive(subkey, pred=True, **data)
         return {**samples, **samples_pred}
@@ -36,7 +45,7 @@ class BlackJaxNumpyro:
 
 class BlackJaxProvided:
     @staticmethod
-    def init(key, model: ModelSpec, data: Dict):
+    def init(key, model, data: Dict):
         # Find density function with model_spec
         if hasattr(model, "logdensity_fn_gen"):
             logdensity_fn = model.logdensity_fn_gen(data)
@@ -44,6 +53,7 @@ class BlackJaxProvided:
             logdensity_fn = model.logdensity_fn
         else:
             logdensity_fn = lambda _: None
+
         if hasattr(model, "initial_position"):
             init_position = model.initial_position
         elif hasattr(model, "initial_position_fn"):
@@ -93,11 +103,11 @@ class BlackJaxHandler:
         # If no backend provided or defined elsewhere
         # default to numpyro
         if backend is None:
-            return BlackJaxNumpyro.init(key, model.model_fn, data)
+            return BlackJaxNumpyro.init(key, model, data)
 
         # Otherwise use provided backend
         if backend == Backend.NUMPYRO:
-            return BlackJaxNumpyro.init(key, model.model_fn, data)
+            return BlackJaxNumpyro.init(key, model, data)
 
         if backend == Backend.PROVIDED:
             return BlackJaxProvided.init(key, model, data)
@@ -118,14 +128,14 @@ class BlackJaxHandler:
 
         # Otherwise use suggested
         if backend == Backend.NUMPYRO:
-            return BlackJaxNumpyro.predict(key, model.model_fn, data, samples)
+            return BlackJaxNumpyro.predict(key, model, data, samples)
 
         if backend == Backend.PROVIDED:
             return BlackJaxProvided.predict(key, model, data, samples)
 
         # or default to numpyro
         if backend is None:
-            return BlackJaxNumpyro.predict(key, model.model_fn, data, samples)
+            return BlackJaxNumpyro.predict(key, model, data, samples)
         return dict()
 
     def run_warmup(
