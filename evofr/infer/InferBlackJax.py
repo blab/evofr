@@ -16,12 +16,14 @@ class BlackJaxNumpyro:
     @staticmethod
     def init(key, model, data):
         key, subkey = random.split(key)
-        init_parms, potential_fn_gen, *_ = initialize_model(
+        init_parms, potential_fn_gen, postprocess_fn, _ = initialize_model(
             subkey, model.model_fn, model_kwargs=data, dynamic_args=True
         )
 
         def logdensity_fn(position):
             return -potential_fn_gen(**data)(position)
+
+        model.postprocess_fn = jax.vmap(postprocess_fn(**data), in_axes=0)
 
         # Define initial position
         if hasattr(model, "initial_position"):
@@ -37,6 +39,7 @@ class BlackJaxNumpyro:
 
     @staticmethod
     def predict(key, model, data, samples):
+        samples = model.postprocess_fn(samples)
         predictive = Predictive(model.model_fn, samples)
         key, subkey = random.split(key)
         samples_pred = predictive(subkey, pred=True, **data)
