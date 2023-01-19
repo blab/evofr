@@ -110,11 +110,16 @@ class GARW:
         _, k = X.shape
 
         # Time varying base trajectory
-        gam = numpyro.sample("gam", self.scale_prior(self.gam_prior))
         beta_0 = numpyro.sample("beta_0", dist.Normal(0.0, 1.0))
+
+        # Simulate increments for base trajectory
+        gam = numpyro.sample("gam", self.scale_prior(self.gam_prior))
         beta_rw = numpyro.sample(
-            "beta_rw", LaplaceRandomWalk(scale=gam, num_steps=k)
+            "beta_rw", LaplaceRandomWalk(scale=gam, num_steps=k - 1)
         )
+
+        # Combine increments and starting position
+        beta_rw = jnp.append(jnp.zeros(1), beta_rw)
         beta = beta_0 + beta_rw
 
         # Time varying growth advantage as random walk
@@ -125,7 +130,11 @@ class GARW:
                 "gam_delta", self.scale_prior(self.gam_delta_prior)
             )
             delta_rw = numpyro.sample(
-                "delta_rw", LaplaceRandomWalk(scale=gam_delta, num_steps=k)
+                "delta_rw", LaplaceRandomWalk(scale=gam_delta, num_steps=k - 1)
+            )
+
+            delta_rw = jnp.concatenate(
+                (jnp.zeros((N_variant - 1, 1)), delta_rw), axis=-1
             )
             delta = delta_0 + delta_rw.T
 
@@ -150,9 +159,9 @@ class GAPRW:
         gam = numpyro.sample("gam", dist.HalfNormal(self.gam_prior))
         beta_0 = numpyro.sample("beta_0", dist.Normal(0.0, 1.0))
         beta_rw = numpyro.sample(
-            "beta_rw", LaplaceRandomWalk(scale=gam, num_steps=T)
+            "beta_rw", LaplaceRandomWalk(scale=gam, num_steps=T - 1)
         )
-        beta = beta_0 + beta_rw
+        beta = beta_0 + jnp.append(jnp.zeros(1), beta_rw)
 
         # Time varying growth advantage as random walk
         # Regularizes changes in growth advantage of variants
@@ -162,8 +171,12 @@ class GAPRW:
                 "gam_delta", dist.HalfNormal(self.gam_delta_prior)
             )
             delta_rw = numpyro.sample(
-                "delta_rw", LaplaceRandomWalk(scale=gam_delta, num_steps=T)
+                "delta_rw", LaplaceRandomWalk(scale=gam_delta, num_steps=T-1)
             )
+            delta_rw = jnp.concatenate(
+                (jnp.zeros((N_variant - 1, 1)), delta_rw), axis=-1
+            )
+
             delta = delta_0 + delta_rw.T
 
         # Transform to growth advatnage
