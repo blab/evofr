@@ -20,10 +20,13 @@ class BlackJaxNumpyro:
             subkey, model.model_fn, model_kwargs=data, dynamic_args=True
         )
 
+        @jax.jit
         def logdensity_fn(position):
             return -potential_fn_gen(**data)(position)
 
-        model.postprocess_fn = jax.vmap(postprocess_fn(**data), in_axes=0)
+        model.postprocess_fn = jax.jit(
+            jax.vmap(postprocess_fn(**data), in_axes=0)
+        )
 
         # Define initial position
         if hasattr(model, "initial_position"):
@@ -74,10 +77,10 @@ class BlackJaxProvided:
 
 
 class BlackJaxHandler:
-    def __init__(self, kernel, **kernel_kwargs):
+    def __init__(self, kernel, seed: Optional[int] = None, **kernel_kwargs):
         self.kernel_fn = kernel
         self.kernel_kwargs = kernel_kwargs
-        self.seed = 100
+        self.seed = seed if seed is not None else 0
         self.rng_key = random.PRNGKey(self.seed)
         self.state = None
 
@@ -192,7 +195,12 @@ class BlackJaxHandler:
 
 class InferBlackJax:
     def __init__(
-        self, num_warmup: int, num_samples: int, kernel, **kernel_kwargs
+        self,
+        num_warmup: int,
+        num_samples: int,
+        kernel,
+        seed: Optional[int] = None,
+        **kernel_kwargs
     ):
         """Construct class for specifying MCMC inference method.
 
@@ -213,7 +221,9 @@ class InferBlackJax:
         """
         self.num_warmup = num_warmup
         self.num_samples = num_samples
-        self.handler = BlackJaxHandler(kernel=kernel, **kernel_kwargs)
+        self.handler = BlackJaxHandler(
+            kernel=kernel, seed=seed, **kernel_kwargs
+        )
 
     def fit(
         self, model: ModelSpec, data: DataSpec, name: Optional[str] = None
