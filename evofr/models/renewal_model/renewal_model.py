@@ -1,6 +1,5 @@
 from functools import partial
 from typing import List, Optional
-from jax import jit
 import jax.numpy as jnp
 
 from evofr.models.model_spec import ModelSpec

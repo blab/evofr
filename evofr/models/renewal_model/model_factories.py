@@ -82,23 +82,22 @@ def _renewal_model(
     # Getting initial conditions
     intros = jnp.zeros((T + seed_L + forecast_L, N_variant))
     with numpyro.plate("N_variant", N_variant):
-        logI0 = numpyro.sample("logI0", dist.Normal(0, 1)) * 5.0 + 4.0
-        I0 = numpyro.deterministic("I0", jnp.exp(logI0))
+        logI0 = numpyro.sample("logI0", dist.Normal(0, 1)) * 3.0
+        # I0 = numpyro.deterministic("I0", jnp.exp(logI0))
+        I0 = jnp.exp(logI0)
         # "I0"= ~ dist.LogNormal(4.0, 5.0))
     intros = intros.at[intro_idx].set(jnp.tile(I0, seed_L))
 
-    # with numpyro.plate("rho_parms", 7):
-    #     rho = numpyro.sample("rho", dist.Beta(5.0, 5.0))
     with numpyro.plate("rho_parms", 6):
         rho_logits = numpyro.sample("rho_logits", dist.Normal()) * 3.0
 
     rho = jnp.exp(jnp.append(rho_logits, 0.0))
-    rho = numpyro.deterministic("rho", rho / rho.sum())
-    # rho = numpyro.sample("rho", dist.Dirichlet(jnp.ones(7)))
+    # rho = numpyro.deterministic("rho", rho / rho.sum())
+    rho = rho / rho.sum()
     rho_vec = reporting_to_vec(rho, T)
 
     I_prev = jnp.clip(
-        v_fs_I(intros, R, _g_rev, delays, seed_L), a_min=1e-12, a_max=1e25
+        v_fs_I(intros, R, _g_rev, delays, seed_L), a_min=1e-12, a_max=1e32
     )
 
     # Smooth trajectory for plotting
