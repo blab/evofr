@@ -181,8 +181,16 @@ class BlackJaxHandler:
                 initial_position, logdensity_fn, num_warmup=num_warmup
             )
         else:
-            kernel = self.kernel_fn(logdensity_fn, **self.kernel_kwargs)
+            step_size = 1e-3
+            inverse_mass_size = sum(
+                v.size for _, v in initial_position.items()
+            )
+            inverse_mass_matrix = jax.numpy.ones(inverse_mass_size)
+            kernel = self.kernel_fn(
+                logdensity_fn, step_size, inverse_mass_matrix
+            )
             starting_state = kernel.init(initial_position)
+            kernel = kernel.step
 
         # Run sampling
         self.rng_key, key = random.split(self.rng_key)
