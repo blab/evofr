@@ -48,6 +48,13 @@ class BlackJaxNumpyro:
         samples_pred = predictive(subkey, pred=True, **data)
         return {**samples, **samples_pred}
 
+    @staticmethod
+    def sample_prior(key, model, data, num_samples):
+        key, subkey = random.split(key)
+        prior_predictive = Predictive(model.model_fn, num_samples=num_samples)
+        prior_samples = prior_predictive(subkey, pred=True, **data)
+        return prior_samples
+
 
 class BlackJaxProvided:
     @staticmethod
