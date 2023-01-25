@@ -9,7 +9,24 @@ import numpyro
 import numpyro.distributions as dist
 
 from .model_spec import ModelSpec
-from .multinomial_logistic_regression import MultinomialLogisticRegression
+from .multinomial_logistic_regression import (
+    MultinomialLogisticRegression,
+    simulate_MLR,
+)
+
+
+def simulate_hier_mlr(growth_advantages, freq0, tau, Ns):
+    # Assume all are in list of size groups
+    assert len(growth_advantages) == len(freq0)
+    assert len(growth_advantages) == len(Ns)
+    groups = len(growth_advantages)
+    seq_counts = []
+    for group in range(groups):
+        _, sc_group = simulate_MLR(
+            growth_advantages[group], freq0[group], tau, Ns[group]
+        )
+        seq_counts.append(sc_group)
+    return seq_counts
 
 
 def hier_MLR_numpyro(
