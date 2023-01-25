@@ -1,5 +1,6 @@
 import numpy as np
 import jax.numpy as jnp
+from jax import vmap
 from jax.nn import softmax
 
 import numpyro
@@ -98,3 +99,24 @@ class MultinomialLogisticRegression(ModelSpec):
         data["X"] = self.make_ols_feature(
             0, T
         )  # Use intercept and time as predictors
+
+    @staticmethod
+    def forecast_frequencies(samples, forecast_L):
+        """
+        Use posterior beta to forecast posterior frequenicies.
+        """
+
+        # Making feature matrix for forecasting
+        last_T = samples["freq"].shape[1]
+        X = MultinomialLogisticRegression.make_ols_feature(
+            start=last_T, stop=last_T + forecast_L
+        )
+
+        # Posterior beta
+        beta = jnp.array(samples["beta"])
+
+        # Matrix multiplication by sample
+        dot_by_sample = vmap(jnp.dot, in_axes=(None, 0), out_axes=0)
+        logits = dot_by_sample(X, beta)  # Logit frequencies by variant
+        samples["freq_forecast"] = softmax(logits, axis=-1)
+        return samples

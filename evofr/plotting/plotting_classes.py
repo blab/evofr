@@ -242,7 +242,7 @@ class RtPlot(EvofrPlot):
             DEFAULT_PS,
             DEFAULT_ALPHAS,
             self.colors,
-            thres=0.001,
+            thres=self.thres,
             plot_neutral_line=self.plot_neutral_line,
         )
         ax.set_ylabel("Effective Reproduction number")  # Making ylabel
