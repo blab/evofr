@@ -7,7 +7,12 @@ from .model_functions import forward_simulate_I, reporting_to_vec
 from .model_options import GARW, NegBinomCases, DirMultinomialSeq
 
 
-def _renewal_model_factory(
+def _renewal_model(
+    cases,
+    seq_counts,
+    N,
+    X,
+    var_names,
     g_rev,
     delays,
     seed_L,
@@ -15,7 +20,8 @@ def _renewal_model_factory(
     RLik=None,
     CaseLik=None,
     SeqLik=None,
-    v_names=None,
+    gen_v_names=None,
+    pred=False,
 ):
     if RLik is None:
         RLik = GARW()
@@ -25,13 +31,17 @@ def _renewal_model_factory(
         SeqLik = DirMultinomialSeq()
 
     # If single generation time
+    _g_rev = g_rev  # Assume we're using original g_rev
     if g_rev.ndim == 1:
         gmap_dim = None  # Use same generation time
     else:
         gmap_dim = 0  # Use each row
         # Specifying variant name map to column
-        if v_names is not None:
-            which_col = {s: i for i, s in enumerate(v_names)}
+        if gen_v_names is not None:
+            v_idx = [
+                var_names.index(s) for s in gen_v_names
+            ]  # Match names in data to generation times
+            _g_rev = _g_rev[v_idx, :]
 
     v_fs_I = jit(
         vmap(
@@ -42,111 +52,102 @@ def _renewal_model_factory(
         static_argnums=4,
     )
 
-    def _variant_model(cases, seq_counts, N, X, var_names, pred=False):
-        T, N_variant = seq_counts.shape
-        obs_range = jnp.arange(seed_L, seed_L + T, 1)
+    T, N_variant = seq_counts.shape
+    obs_range = jnp.arange(seed_L, seed_L + T, 1)
 
-        # Computing first introduction dates
-        first_obs = (np.ma.masked_invalid(np.array(seq_counts)) != 0).argmax(
-            axis=0
+    # Computing first introduction dates
+    first_obs = (np.ma.masked_invalid(np.array(seq_counts)) != 0).argmax(
+        axis=0
+    )
+    intro_dates = np.concatenate([first_obs + d for d in np.arange(0, seed_L)])
+    # intro_idx = (first_obs, np.arange(N_variant)) # Single introduction
+    intro_idx = (
+        intro_dates,
+        np.tile(np.arange(N_variant), seed_L),
+    )  # Multiple introductions
+
+    _R = RLik.model(
+        N_variant, X
+    )  # likelihood on effective reproduction number
+
+    # Add forecasted R
+    if forecast_L > 0:
+        R_forecast = numpyro.deterministic(
+            "R_forecast", jnp.vstack((_R[-1, :],) * forecast_L)
         )
-        intro_dates = np.concatenate(
-            [first_obs + d for d in np.arange(0, seed_L)]
+        R = jnp.vstack((_R, R_forecast))
+    else:
+        R = _R
+
+    # Getting initial conditions
+    intros = jnp.zeros((T + seed_L + forecast_L, N_variant))
+    with numpyro.plate("N_variant", N_variant):
+        logI0 = numpyro.sample("logI0", dist.Normal(0, 1)) * 3.0
+        # I0 = numpyro.deterministic("I0", jnp.exp(logI0))
+        I0 = jnp.exp(logI0)
+        # "I0"= ~ dist.LogNormal(4.0, 5.0))
+    intros = intros.at[intro_idx].set(jnp.tile(I0, seed_L))
+
+    with numpyro.plate("rho_parms", 6):
+        rho_logits = numpyro.sample("rho_logits", dist.Normal()) * 3.0
+
+    rho = jnp.exp(jnp.append(rho_logits, 0.0))
+    # rho = numpyro.deterministic("rho", rho / rho.sum())
+    rho = rho / rho.sum()
+    rho_vec = reporting_to_vec(rho, T)
+
+    I_prev = jnp.clip(
+        v_fs_I(intros, R, _g_rev, delays, seed_L), a_min=1e-12, a_max=1e32
+    )
+
+    # Smooth trajectory for plotting
+    numpyro.deterministic(
+        "I_smooth", jnp.mean(rho_vec) * jnp.take(I_prev, obs_range, axis=0)
+    )
+
+    # Compute growth rate assuming I_{t+1} = I_{t} \exp(r_{t})
+    numpyro.deterministic(
+        "r",
+        jnp.diff(
+            jnp.log(jnp.take(I_prev, obs_range, axis=0)),
+            prepend=jnp.nan,
+            axis=0,
+        ),
+    )
+
+    # Compute expected cases
+    total_prev = I_prev.sum(axis=1)
+    numpyro.deterministic(
+        "total_smooth_prev",
+        jnp.mean(rho_vec) * jnp.take(total_prev, obs_range),
+    )
+    EC = numpyro.deterministic("EC", jnp.take(total_prev, obs_range) * rho_vec)
+
+    # Evaluate case likelihood
+    CaseLik.model(cases, EC, pred=pred)
+
+    # Compute frequency
+    _freq = jnp.divide(I_prev, total_prev[:, None])
+    freq = numpyro.deterministic("freq", jnp.take(_freq, obs_range, axis=0))
+
+    SeqLik.model(seq_counts, N, freq, pred)  # Evaluate frequency likelihood
+
+    numpyro.deterministic(
+        "R_ave", (_R * freq).sum(axis=1)
+    )  # Getting average R
+
+    if forecast_L > 0:
+        numpyro.deterministic("freq_forecast", _freq[(seed_L + T) :, :])
+        I_forecast = numpyro.deterministic(
+            "I_smooth_forecast",
+            jnp.mean(rho_vec) * I_prev[(seed_L + T) :, :],
         )
-        # intro_idx = (first_obs, np.arange(N_variant)) # Single introduction
-        intro_idx = (
-            intro_dates,
-            np.tile(np.arange(N_variant), seed_L),
-        )  # Multiple introductions
-
-        _R = RLik.model(
-            N_variant, X
-        )  # likelihood on effective reproduction number
-
-        # Add forecasted R
-        if forecast_L > 0:
-            R_forecast = numpyro.deterministic(
-                "R_forecast", jnp.vstack((_R[-1, :],) * forecast_L)
-            )
-            R = jnp.vstack((_R, R_forecast))
-        else:
-            R = _R
-
-        # Getting initial conditions
-        intros = jnp.zeros((T + seed_L + forecast_L, N_variant))
-        with numpyro.plate("N_variant", N_variant):
-            I0 = numpyro.sample("I0", dist.Uniform(0.0, 300_000.0))
-        intros = intros.at[intro_idx].set(jnp.tile(I0, seed_L))
-
-        with numpyro.plate("rho_parms", 7):
-            rho = numpyro.sample("rho", dist.Beta(5.0, 5.0))
-        rho_vec = reporting_to_vec(rho, T)
-
-        _g_rev = g_rev  # Assume we're using original g_rev
-        if gmap_dim is not None:  # Match variants to correct generation time
-            v_idx = [
-                which_col[s] for s in var_names
-            ]  # Find which variants present
-            _g_rev = _g_rev[v_idx, :]
-
-        I_prev = jnp.clip(
-            v_fs_I(intros, R, _g_rev, delays, seed_L), a_min=0.0, a_max=1e25
-        )
-
-        # Smooth trajectory for plotting
         numpyro.deterministic(
-            "I_smooth", jnp.mean(rho_vec) * jnp.take(I_prev, obs_range, axis=0)
+            "r_forecast",
+            jnp.diff(jnp.log(I_forecast), prepend=jnp.nan, axis=0),
         )
 
-        # Compute growth rate assuming I_{t+1} = I_{t} \exp(r_{t})
-        numpyro.deterministic(
-            "r",
-            jnp.diff(
-                jnp.log(jnp.take(I_prev, obs_range, axis=0)),
-                prepend=jnp.nan,
-                axis=0,
-            ),
-        )
-
-        # Compute expected cases
-        total_prev = I_prev.sum(axis=1)
-        numpyro.deterministic(
-            "total_smooth_prev",
-            jnp.mean(rho_vec) * jnp.take(total_prev, obs_range),
-        )
-        EC = numpyro.deterministic(
-            "EC", jnp.take(total_prev, obs_range) * rho_vec
-        )
-
-        # Evaluate case likelihood
-        CaseLik.model(cases, EC, pred=pred)
-
-        # Compute frequency
-        _freq = jnp.divide(I_prev, total_prev[:, None])
-        freq = numpyro.deterministic(
-            "freq", jnp.take(_freq, obs_range, axis=0)
-        )
-
-        SeqLik.model(
-            seq_counts, N, freq, pred
-        )  # Evaluate frequency likelihood
-
-        numpyro.deterministic(
-            "R_ave", (_R * freq).sum(axis=1)
-        )  # Getting average R
-
-        if forecast_L > 0:
-            numpyro.deterministic("freq_forecast", _freq[(seed_L + T) :, :])
-            I_forecast = numpyro.deterministic(
-                "I_smooth_forecast",
-                jnp.mean(rho_vec) * I_prev[(seed_L + T) :, :],
-            )
-            numpyro.deterministic(
-                "r_forecast",
-                jnp.diff(jnp.log(I_forecast), prepend=jnp.nan, axis=0),
-            )
-
-    return _variant_model
+    return None
 
 
 def _spline_incidence_model_factory(

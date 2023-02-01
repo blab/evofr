@@ -1,4 +1,5 @@
-from typing import List, Optional
+from typing import Optional
+from functools import partial
 import jax.numpy as jnp
 import numpy as np
 
@@ -14,90 +15,104 @@ import numpyro
 import numpyro.distributions as dist
 
 
-def _single_renewal_factory(
+def _single_renewal_model(
     g_rev,
     delays,
     inf_period,
     seed_L,
     forecast_L,
+    cases,
+    X,
+    day_of_week_effect=True,
     CaseLik=None,
+    pred=False,
 ):
     if CaseLik is None:
         CaseLik = NegBinomCases()
 
-    def _model(cases, X, pred=False):
-        T, k = X.shape
-        obs_range = jnp.arange(seed_L, seed_L + T, 1)
+    T, k = X.shape
+    obs_range = jnp.arange(seed_L, seed_L + T, 1)
 
-        # Effective Reproduction number likelihood
-        gam = numpyro.sample("gam", dist.HalfNormal(1.0))
-        beta_0 = numpyro.sample("beta_0", dist.Normal(0.0, 1.0))
-        beta_rw = numpyro.sample(
-            "beta_rw", LaplaceRandomWalk(scale=gam, num_steps=k)
+    # Effective Reproduction number likelihood
+    gam = numpyro.sample("gam", dist.HalfNormal(1.0))
+    beta_0 = numpyro.sample("beta_0", dist.Normal(0.0, 1.0))
+    with numpyro.plate("N_steps_base", k - 1):
+        beta_rw_step = numpyro.sample("beta_rw_step", dist.Laplace()) * gam
+        beta_rw = numpyro.deterministic("beta_rw", jnp.cumsum(beta_rw_step))
+
+    # Combine increments and starting position
+    beta_rw = jnp.append(jnp.zeros(1), beta_rw)
+    beta = beta_0 + beta_rw
+    _R = numpyro.deterministic("R", jnp.exp(X @ beta))
+
+    # Add forecasted values of R
+    R = _R
+    if forecast_L > 0:
+        R_forecast = numpyro.deterministic(
+            "R_forecast", jnp.vstack((_R[-1],) * forecast_L)
         )
-        beta = beta_0 + beta_rw
-        _R = numpyro.deterministic("R", jnp.exp(X @ beta))
+        R = jnp.hstack((_R, R_forecast))
 
-        # Add forecasted values of R
-        R = _R
-        if forecast_L > 0:
-            R_forecast = numpyro.deterministic(
-                "R_forecast", jnp.vstack((_R[-1],) * forecast_L)
-            )
-            R = jnp.hstack((_R, R_forecast))
+    # Getting initial conditions
+    logI0 = numpyro.sample("logI0", dist.Normal()) * 3.0 + 1.0
+    I0 = jnp.exp(logI0)
+    intros = jnp.zeros((T + seed_L + forecast_L,))
+    intros = intros.at[np.arange(seed_L)].set(I0 * jnp.ones(seed_L))
 
-        # Getting initial conditions
-        I0 = numpyro.sample("I0", dist.LogNormal(0.0, 5.0))
-        intros = jnp.zeros((T + seed_L + forecast_L,))
-        intros = intros.at[np.arange(seed_L)].set(I0 * jnp.ones(seed_L))
+    # Generate day-of-week reporting fraction
 
-        # Generate day-of-week reporting fraction
-        with numpyro.plate("rho_parms", 7):
-            rho = numpyro.sample("rho", dist.Beta(5.0, 5.0))
-        rho_vec = reporting_to_vec(rho, T)
+    if day_of_week_effect:
+        with numpyro.plate("rho_parms", 6):
+            rho_logits = numpyro.sample("rho_logits", dist.Normal()) * 5.0
+        _rho = jnp.exp(jnp.append(rho_logits, 0.0))
+        rho = numpyro.deterministic("rho", _rho / _rho.sum())
+    else:
+        rho = jnp.ones(7)
+    rho_vec = reporting_to_vec(rho, T)
 
-        I_prev, prev = forward_simulate_I_and_prev(
-            intros, R, g_rev, delays, inf_period, seed_L
+    I_prev, prev = forward_simulate_I_and_prev(
+        intros, R, g_rev, delays, inf_period, seed_L
+    )
+    I_prev = jnp.clip(I_prev, a_min=1e-12, a_max=1e25)
+
+    # Smooth trajectory for plotting
+    numpyro.deterministic(
+        "I_smooth", jnp.mean(rho_vec) * jnp.take(I_prev, obs_range, axis=0)
+    )
+    numpyro.deterministic(
+        "prev", jnp.mean(rho_vec) * jnp.take(prev, obs_range, axis=0)
+    )
+
+    # Compute growth rate assuming I_{t+1} = I_{t} \exp(r_{t})
+    numpyro.deterministic(
+        "r",
+        jnp.diff(
+            jnp.log(jnp.take(I_prev, obs_range, axis=0)),
+            prepend=jnp.nan,
+            axis=0,
+        ),
+    )
+
+    # Compute expected cases
+    numpyro.deterministic(
+        "total_smooth_prev",
+        jnp.mean(rho_vec) * jnp.take(I_prev, obs_range),
+    )
+    EC = numpyro.deterministic("EC", jnp.take(I_prev, obs_range) * rho_vec)
+
+    # Evaluate case likelihood
+    CaseLik.model(cases, EC, pred=pred)
+
+    if forecast_L > 0:
+        I_forecast = numpyro.deterministic(
+            "I_smooth_forecast",
+            jnp.mean(rho_vec) * I_prev[(seed_L + T) :],
         )
-        I_prev = jnp.clip(I_prev, a_min=1e-12, a_max=1e25)
-
-        # Smooth trajectory for plotting
         numpyro.deterministic(
-            "I_smooth", jnp.mean(rho_vec) * jnp.take(I_prev, obs_range, axis=0)
+            "r_forecast",
+            jnp.diff(jnp.log(I_forecast), prepend=jnp.nan, axis=0),
         )
-        numpyro.deterministic("prev", jnp.mean(rho_vec) * jnp.take(prev, obs_range, axis=0))
-
-        # Compute growth rate assuming I_{t+1} = I_{t} \exp(r_{t})
-        numpyro.deterministic(
-            "r",
-            jnp.diff(
-                jnp.log(jnp.take(I_prev, obs_range, axis=0)),
-                prepend=jnp.nan,
-                axis=0,
-            ),
-        )
-
-        # Compute expected cases
-        numpyro.deterministic(
-            "total_smooth_prev",
-            jnp.mean(rho_vec) * jnp.take(I_prev, obs_range),
-        )
-        EC = numpyro.deterministic("EC", jnp.take(I_prev, obs_range) * rho_vec)
-
-        # Evaluate case likelihood
-        CaseLik.model(cases, EC, pred=pred)
-
-        if forecast_L > 0:
-            I_forecast = numpyro.deterministic(
-                "I_smooth_forecast",
-                jnp.mean(rho_vec) * I_prev[(seed_L + T) :],
-            )
-            numpyro.deterministic(
-                "r_forecast",
-                jnp.diff(jnp.log(I_forecast), prepend=jnp.nan, axis=0),
-            )
-
-    return _model
+    return None
 
 
 class SingleRenewalModel(ModelSpec):
@@ -111,6 +126,7 @@ class SingleRenewalModel(ModelSpec):
         k: Optional[int] = None,
         CLik=None,
         basis_fn: Optional[BasisFunction] = None,
+        day_of_week_effect: bool = True,
     ):
         self.g_rev = jnp.flip(g, axis=-1)
         self.delays = delays
@@ -129,17 +145,20 @@ class SingleRenewalModel(ModelSpec):
         )
 
         # Defining model likelihoods
+        self.day_of_week_effect = day_of_week_effect
         self.CLik = CLik
         self.make_model()
 
     def make_model(self):
-        self.model_fn = _single_renewal_factory(
-            self.g_rev,
-            self.delays,
-            self.inf_period,
-            self.seed_L,
-            self.forecast_L,
-            self.CLik,
+        self.model_fn = partial(
+            _single_renewal_model,
+            g_rev=self.g_rev,
+            delays=self.delays,
+            inf_period=self.inf_period,
+            seed_L=self.seed_L,
+            forecast_L=self.forecast_L,
+            day_of_week_effect=self.day_of_week_effect,
+            CaseLik=self.CLik,
         )
 
     def augment_data(self, data):

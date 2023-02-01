@@ -1,9 +1,10 @@
+from functools import partial
 from typing import List, Optional
 import jax.numpy as jnp
 
 from evofr.models.model_spec import ModelSpec
 from .basis_functions import BasisFunction, Spline
-from .model_factories import _renewal_model_factory
+from .model_factories import _renewal_model
 
 
 class RenewalModel(ModelSpec):
@@ -11,8 +12,8 @@ class RenewalModel(ModelSpec):
         self,
         g,
         delays,
-        seed_L: int,
-        forecast_L: int,
+        seed_L: Optional[int] = None,
+        forecast_L: Optional[int] = None,
         k: Optional[int] = None,
         RLik=None,
         CLik=None,
@@ -22,9 +23,9 @@ class RenewalModel(ModelSpec):
     ):
         self.g_rev = jnp.flip(g, axis=-1)
         self.delays = delays
-        self.seed_L = seed_L
-        self.forecast_L = forecast_L
-        self.v_names = v_names
+        self.seed_L = seed_L if seed_L is not None else 7
+        self.forecast_L = forecast_L if forecast_L is not None else 0
+        self.gen_v_names = v_names
 
         # Making basis expansion for Rt
         self.k = k if k else 10
@@ -39,15 +40,16 @@ class RenewalModel(ModelSpec):
         self.make_model()
 
     def make_model(self):
-        self.model_fn = _renewal_model_factory(
-            self.g_rev,
-            self.delays,
-            self.seed_L,
-            self.forecast_L,
-            self.RLik,
-            self.CLik,
-            self.SLik,
-            self.v_names,
+        self.model_fn = partial(
+            _renewal_model,
+            g_rev=self.g_rev,
+            delays=self.delays,
+            seed_L=self.seed_L,
+            forecast_L=self.forecast_L,
+            RLik=self.RLik,
+            CaseLik=self.CLik,
+            SeqLik=self.SLik,
+            gen_v_names=self.gen_v_names,
         )
 
     def augment_data(self, data):
