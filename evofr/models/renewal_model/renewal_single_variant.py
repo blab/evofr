@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 import jax.numpy as jnp
 import numpy as np
 
@@ -47,13 +47,16 @@ def _single_renewal_factory(
             R = jnp.hstack((_R, R_forecast))
 
         # Getting initial conditions
-        I0 = numpyro.sample("I0", dist.LogNormal(0.0, 5.0))
+        logI0 = numpyro.sample("logI0", dist.Normal(0.0, 1.0)) * 5.0 + 2.0
+        I0 = jnp.exp(logI0)
         intros = jnp.zeros((T + seed_L + forecast_L,))
         intros = intros.at[np.arange(seed_L)].set(I0 * jnp.ones(seed_L))
 
         # Generate day-of-week reporting fraction
-        with numpyro.plate("rho_parms", 7):
-            rho = numpyro.sample("rho", dist.Beta(5.0, 5.0))
+        with numpyro.plate("rho_parms", 6):
+            rho_logits = numpyro.sample("rho_logits", dist.Normal()) * 3.0
+        _rho = jnp.exp(jnp.append(rho_logits, 0.0))
+        rho = numpyro.deterministic("rho", _rho / _rho.sum())
         rho_vec = reporting_to_vec(rho, T)
 
         I_prev, prev = forward_simulate_I_and_prev(
@@ -65,7 +68,9 @@ def _single_renewal_factory(
         numpyro.deterministic(
             "I_smooth", jnp.mean(rho_vec) * jnp.take(I_prev, obs_range, axis=0)
         )
-        numpyro.deterministic("prev", jnp.mean(rho_vec) * jnp.take(prev, obs_range, axis=0))
+        numpyro.deterministic(
+            "prev", jnp.mean(rho_vec) * jnp.take(prev, obs_range, axis=0)
+        )
 
         # Compute growth rate assuming I_{t+1} = I_{t} \exp(r_{t})
         numpyro.deterministic(
