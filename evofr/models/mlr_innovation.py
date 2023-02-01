@@ -235,7 +235,7 @@ def prep_clade_list(
     # First check:
     # SHould be able to reduce to a faster solve maybe?
     var_names = (
-        list(raw_variant_parents.variant.values)
+        list(raw_variant_parents.variant.unique())
         if var_names is None
         else var_names
     )
@@ -246,6 +246,8 @@ def prep_clade_list(
     }
     for _, row in raw_variant_parents.iterrows():
         var = row["variant"]
+        if var not in var_names:
+            continue
         var_index = var_names.index(var)
 
         # Find ancestors and add to row
