@@ -340,8 +340,8 @@ class MultinomialSeq:
 
 
 class DirMultinomialSeq:
-    def __init__(self, xi_prior=99):
-        self.xi_prior = xi_prior
+    def __init__(self, xi_prior=None):
+        self.xi_prior = xi_prior if xi_prior is not None else 99
 
     def model(self, seq_counts, N, freq, pred=False):
         # Overdispersion in sequence counts

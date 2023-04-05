@@ -1,3 +1,5 @@
+from functools import partial
+from typing import Optional
 import numpy as np
 import jax.numpy as jnp
 from jax import vmap
@@ -6,6 +8,7 @@ from jax.nn import softmax
 import numpyro
 import numpyro.distributions as dist
 
+from .renewal_model.model_options import DirMultinomialSeq
 from .model_spec import ModelSpec
 
 
@@ -25,7 +28,16 @@ def simulate_MLR(growth_advantage, freq0, tau, Ns):
     return freq, np.stack(seq_counts)
 
 
-def MLR_numpyro(seq_counts, N, X, tau=None, pred=False, var_names=None):
+def MLR_numpyro(
+    seq_counts,
+    N,
+    X,
+    tau=None,
+    pred=False,
+    var_names=None,
+    dir_multinomial=False,
+    xi_prior=None,
+):
     _, N_variants = seq_counts.shape
     _, N_features = X.shape
 
@@ -44,17 +56,21 @@ def MLR_numpyro(seq_counts, N, X, tau=None, pred=False, var_names=None):
     )
 
     logits = jnp.dot(X, beta)  # Logit frequencies by variant
+    freq = numpyro.deterministic("freq", softmax(logits, axis=-1))
 
-    # Evaluate likelihood
-    obs = None if pred else np.nan_to_num(seq_counts)
-    numpyro.sample(
-        "seq_counts",
-        dist.MultinomialLogits(logits=logits, total_count=np.nan_to_num(N)),
-        obs=obs,
-    )
-
-    # Compute frequency
-    numpyro.deterministic("freq", softmax(logits, axis=-1))
+    # Evaluate likelihood using either Multinomial or Dirichlet-multinomial
+    if dir_multinomial:
+        seq_likelihood = DirMultinomialSeq(xi_prior=xi_prior)
+        seq_likelihood.model(seq_counts, N, freq, pred=pred)
+    else:
+        obs = None if pred else np.nan_to_num(seq_counts)
+        numpyro.sample(
+            "seq_counts",
+            dist.MultinomialLogits(
+                logits=logits, total_count=np.nan_to_num(N)
+            ),
+            obs=obs,
+        )
 
     # Compute growth advantage from model
     if tau is not None:
@@ -64,20 +80,34 @@ def MLR_numpyro(seq_counts, N, X, tau=None, pred=False, var_names=None):
 
 
 class MultinomialLogisticRegression(ModelSpec):
-    def __init__(self, tau: float) -> None:
+    def __init__(
+        self,
+        tau: float,
+        dir_multinomial=False,
+        xi_prior: Optional[float] = None,
+    ) -> None:
         """Construct ModelSpec for Multinomial logistic regression
 
         Parameters
         ----------
         tau:
             Assumed generation time for conversion to relative R.
+        dir_multinomial:
+            Whether to use a Dirichlet-Multinomial likelihood for sequence counts.
+            Default is False.
+        xi_prior:
+            Prior on seq_counts overdispersion magnitude only used when dir_multinomial == True.
 
         Returns
         -------
         MultinomialLogisticRegression
         """
         self.tau = tau  # Fixed generation time
-        self.model_fn = MLR_numpyro
+        self.dir_multinomial = dir_multinomial
+        self.xi_prior = xi_prior
+        self.model_fn = partial(
+            MLR_numpyro, dir_multinomial=self.dir_multinomial, xi_prior=self.xi_prior
+        )
 
     @staticmethod
     def make_ols_feature(start, stop):
