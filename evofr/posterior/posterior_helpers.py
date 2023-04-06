@@ -326,6 +326,18 @@ def get_sites_variants_tidy(
     # Each data entry will be tidy
     date_map = data.date_to_index
 
+    for d, site, forecast in zip(dated, sites, forecasts):
+        if forecast and d:
+            # Check size of dated forecasts to generate date map
+            T = samples[site].shape[1]
+            forecasted_dates = forecast_dates(data.dates, T)
+            forecast_date_map = {
+                d: i for (i, d) in enumerate(forecasted_dates)
+            }
+            metadata["forecast_dates"] = forecasted_dates
+
+            break
+
     def tidy_site_date(site, forecast):
         # Loop over entries of median and
         med, quants = get_quantiles(samples, ps, site)
@@ -336,8 +348,7 @@ def get_sites_variants_tidy(
 
         # Are we using original or forecast dates?
         if forecast:
-            _dates = forecast_dates(data.dates, T)
-            _date_map = {d: i for (i, d) in enumerate(_dates)}
+            _date_map = forecast_date_map
         else:
             _date_map = date_map
 
