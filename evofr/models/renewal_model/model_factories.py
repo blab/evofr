@@ -39,7 +39,7 @@ def _renewal_model(
         # Specifying variant name map to column
         if gen_v_names is not None:
             v_idx = [
-                var_names.index(s) for s in gen_v_names
+                gen_v_names.index(s) for s in var_names
             ]  # Match names in data to generation times
             _g_rev = _g_rev[v_idx, :]
 
