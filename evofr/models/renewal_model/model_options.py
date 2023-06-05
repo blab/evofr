@@ -94,7 +94,7 @@ class GARW:
     def __init__(
         self, gam_prior=0.5, gam_delta_prior=0.5, prior_family="Cauchy"
     ):
-        """Construct FixedGrowthAdvantage model.
+        """Construct GARW model.
         Parameters
         ----------
         gam_prior:
