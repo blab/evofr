@@ -88,9 +88,7 @@ def hier_MLR_numpyro(
         numpyro.deterministic(
             "ga", jnp.exp(beta[-1, :-1, :] * tau)
         )  # Last row corresponds to linear predictor / growth advantage
-        numpyro.deterministic(
-            "ga_loc", jnp.exp(beta_loc[-1, :, 0] * tau)
-        )
+        numpyro.deterministic("ga_loc", jnp.exp(beta_loc[-1, :, 0] * tau))
 
 
 class HierMLR(ModelSpec):
