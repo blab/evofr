@@ -172,6 +172,87 @@ class GARW:
         return R
 
 
+def expit(x):
+    return jnp.reciprocal(1 + jnp.exp(-x))
+
+
+class LogitGA:
+
+    def __init__(
+        self, gam_prior=0.5, gam_delta_prior=0.5, prior_family="Cauchy"
+    ):
+        """Construct LogitGA model.
+        Parameters
+        ----------
+        gam_prior:
+            hyper_prior for scale of Rt increment.
+        gam_delta_prior:
+            hyper_prior for scale of growth advantage increment.
+        prior_family:
+            family to draw scale from for LAS.
+
+        Returns
+        -------
+        GARW
+        """
+
+        self.gam_prior = gam_prior
+        self.gam_delta_prior = gam_delta_prior
+
+        if prior_family == "Cauchy":
+            self.scale_prior = dist.HalfCauchy()
+        elif prior_family == "Normal":
+            self.scale_prior = dist.HalfNormal()
+
+    def model(self, N_variant, X):
+        GA_MAX = 10.0
+        R_BASE_MAX = 2.5
+
+        T, k = X.shape
+
+        # Time varying base trajectory
+        beta_0 = numpyro.sample("beta_0", dist.Normal(0.0, 1.0))
+
+        # Simulate increments for base trajectory
+        gam = numpyro.sample("gam", self.scale_prior) * self.gam_prior
+        with numpyro.plate("N_steps_base", k - 1):
+            beta_rw_step = numpyro.sample("beta_rw_step", dist.Laplace()) * gam
+            beta_rw = numpyro.deterministic(
+                "beta_rw", jnp.cumsum(beta_rw_step)
+            )
+
+        # Combine increments and starting position
+        beta_rw = jnp.append(jnp.zeros(1), beta_rw)
+        beta = beta_0 + beta_rw
+
+        # Time varying growth advantage as random walk
+        # Regularizes changes in growth advantage of variants
+        with numpyro.plate("N_variant_m1", N_variant - 1):
+            delta_0 = numpyro.sample("delta_0", dist.Normal(0.0, 1.0))
+            gam_delta = (
+                numpyro.sample("gam_delta", self.scale_prior)
+                * self.gam_delta_prior
+            )
+
+            with numpyro.plate("N_steps_variant", k - 1):
+                delta_rw_step = (
+                    numpyro.sample("delta_rw_step", dist.Laplace()) * gam_delta
+                )
+                delta_rw = numpyro.deterministic(
+                    "delta_rw", jnp.cumsum(delta_rw_step, axis=0)
+                )
+
+            delta_rw = jnp.concatenate(
+                (jnp.zeros((1, N_variant - 1)), delta_rw), axis=0
+            )
+            delta = delta_0 + delta_rw
+
+        ga = numpyro.deterministic("ga", GA_MAX * expit(X @ delta))
+        R_base = R_BASE_MAX * expit(X @ beta)
+        R = numpyro.deterministic("R", R_base[:, None] * jnp.hstack((ga, jnp.zeros((T, 1)))))
+        return R
+
+
 class GAPRW:
     def __init__(self, gam_prior=0.5, gam_delta_prior=0.5):
         self.gam_prior = gam_prior
