@@ -135,3 +135,27 @@ class HierMLR(ModelSpec):
         T, G = data["N"].shape
         data["tau"] = self.tau
         data["X"] = self.make_ols_feature(0, T, G)
+
+    @staticmethod
+    def forecast_frequencies(samples, forecast_L):
+        """
+        Use posterior beta to forecast posterior frequencies.
+        """
+
+        # Making feature matrix for forecasting
+        last_T = samples["freq"].shape[1]
+        n_groups = samples["freq"].shape[-1]
+
+        X = HierMLR.make_ols_feature(
+            start=last_T, stop=last_T + forecast_L, n_groups=n_groups
+        )
+
+        # (T, F, G) times (F, V, G) -> (T, V, G)
+        dot_by_group = vmap(jnp.dot, in_axes=(-1, -1), out_axes=-1)
+        dbg_by_sample = vmap(dot_by_group, in_axes=(None, 0), out_axes=0)
+
+        # Creating frequencies from posterior beta
+        beta = jnp.array(samples["beta"])
+        logits = dbg_by_sample(X, beta)
+        samples["freq_forecast"] = softmax(logits, axis=-2)  # (S, T, V, G)
+        return samples
