@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from jax.interpreters.xla import DeviceArray
+from jax import Array
 
 class BasisFunction(ABC):
 
     @abstractmethod
-    def make_features(self, data: dict) -> DeviceArray:
+    def make_features(self, data: dict) -> Array:
         pass
