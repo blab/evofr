@@ -1,6 +1,5 @@
 from typing import Optional
-from jax import vmap
-from jax.interpreters.xla import DeviceArray
+from jax import vmap, Array
 import jax.numpy as jnp
 from jax.scipy.special import gammaln
 from .basis_fns import BasisFunction
@@ -54,7 +53,7 @@ class SquaredExponential(HSGaussianProcess):
             * jnp.exp(-0.5 * jnp.square(rho) * jnp.square(w))
         )
 
-    def make_features(self, data: dict) -> DeviceArray:
+    def make_features(self, data: dict) -> Array:
         T = data["N"].shape[0]
 
         # Make time period
@@ -105,7 +104,7 @@ class Matern(HSGaussianProcess):
         expon = -nu - 0.5
         return coef * jnp.power(base, expon)
 
-    def make_features(self, data: dict) -> DeviceArray:
+    def make_features(self, data: dict) -> Array:
         T = data["N"].shape[0]
 
         # Make time period
