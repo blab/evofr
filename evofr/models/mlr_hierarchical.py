@@ -39,28 +39,27 @@ def hier_MLR_numpyro(
     pool_scale = 0.1 if pool_scale is None else pool_scale
 
     # Sampling intercept and fitness parameters
-    with numpyro.plate("variants", N_variants - 1, dim=-2):
-
+    reparam_config = {
+        "beta_loc": TransformReparam(),
+        "beta_scale": TransformReparam(),
+        "alpha": TransformReparam(),
+        "raw_beta": TransformReparam(),
+    }
+    with numpyro.handlers.reparam(config=reparam_config):
+        beta_scale = numpyro.sample(
+            "beta_scale",
+            dist.TransformedDistribution(
+                dist.HalfNormal(1.0),
+                dist.transforms.AffineTransform(0.0, pool_scale),
+            ),
+        )
+        with numpyro.plate("variants", N_variants - 1, dim=-2):
         # Define loc and scale for fitness beta
-        reparam_config = {
-            "beta_loc": TransformReparam(),
-            "beta_scale": TransformReparam(),
-            "alpha": TransformReparam(),
-            "raw_beta": TransformReparam(),
-        }
-        with numpyro.handlers.reparam(config=reparam_config):
             beta_loc = numpyro.sample(
                 "beta_loc",
                 dist.TransformedDistribution(
                     dist.Normal(0.0, 1.0),
                     dist.transforms.AffineTransform(0.0, 0.2),
-                ),
-            )
-            beta_scale = numpyro.sample(
-                "beta_scale",
-                dist.TransformedDistribution(
-                    dist.HalfNormal(1.0),
-                    dist.transforms.AffineTransform(0.0, pool_scale),
                 ),
             )
 
