@@ -97,7 +97,7 @@ def _renewal_model(
     rho_vec = reporting_to_vec(rho, T)
 
     I_prev = jnp.clip(
-        v_fs_I(intros, R, _g_rev, delays, seed_L), a_min=1e-12, a_max=1e32
+        v_fs_I(intros, R, _g_rev, delays, seed_L), a_min=1e-12, a_max=1e15
     )
 
     # Smooth trajectory for plotting
