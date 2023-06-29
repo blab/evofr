@@ -355,8 +355,8 @@ class NegBinomCases:
     def model(self, cases, EC, pred=False):
         # NegativeBinomial sampling
         raw_alpha = numpyro.sample(
-            "raw_alpha", dist.HalfNormal(self.raw_alpha_sd)
-        )
+            "raw_alpha", dist.HalfNormal()
+        ) * self.raw_alpha_sd
         is_obs = is_obs_idx(cases)  # Find unobserved case counts
 
         # Overwrite defaults for predictive checks
