@@ -35,28 +35,32 @@ def hier_MLR_numpyro(
     _, N_variants, N_groups = seq_counts.shape
     _, N_features, _ = X.shape
 
-    pool_scale = 4.0 if pool_scale is None else pool_scale
+    pool_scale = 0.5 if pool_scale is None else pool_scale
 
-    # Sampling parameters
-    with numpyro.plate("features", N_features, dim=-3):
-        with numpyro.plate("variants", N_variants - 1, dim=-2):
-            # Define loc and scale for beta for predictor and variant group
-            beta_loc = numpyro.sample("beta_loc", dist.Normal(0.0, 5.0))
-            beta_scale = numpyro.sample(
-                "beta_scale", dist.HalfNormal(pool_scale)
+    # Sampling intercept and fitness parameters
+    with numpyro.plate("variants", N_variants - 1, dim=-2):
+
+        # Define loc and scale for fitness beta
+        beta_loc = numpyro.sample("beta_loc", dist.Normal(0.0, 0.1))
+        beta_scale = numpyro.sample("beta_scale", dist.HalfNormal(pool_scale))
+
+        # Use location and scale parameter to draw within group
+        with numpyro.plate("group", N_groups, dim=-1):
+            # Leave intercept alpha unpooled
+            raw_alpha = numpyro.sample("alpha", dist.Normal(0.0, 6.0))
+            raw_beta = numpyro.sample(
+                "raw_beta", dist.Normal(beta_loc, beta_scale)
             )
-
-            # Use location and scale parameter to draw within group
-            with numpyro.plate("group", N_groups, dim=-1):
-                raw_beta = numpyro.sample(
-                    "raw_beta", dist.Normal(beta_loc, beta_scale)
-                )
 
     # All parameters are relative to last column / variant
     beta = numpyro.deterministic(
         "beta",
         jnp.concatenate(
-            (raw_beta, jnp.zeros((N_features, 1, N_groups))), axis=1
+            (
+                jnp.stack((raw_alpha, raw_beta)),
+                jnp.zeros((N_features, 1, N_groups)),
+            ),
+            axis=1,
         ),
     )
 
@@ -88,7 +92,7 @@ def hier_MLR_numpyro(
         numpyro.deterministic(
             "ga", jnp.exp(beta[-1, :-1, :] * tau)
         )  # Last row corresponds to linear predictor / growth advantage
-        numpyro.deterministic("ga_loc", jnp.exp(beta_loc[-1, :, 0] * tau))
+        numpyro.deterministic("ga_loc", jnp.exp(beta_loc[:, 0] * tau))
 
 
 class HierMLR(ModelSpec):

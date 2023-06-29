@@ -47,7 +47,7 @@ def mutational_fitness_model(
     )
     # Innovations to beta
     raw_beta = jnp.dot(mutation_presence, raw_delta)
-    raw_beta = raw_beta - raw_beta[-1]
+    raw_beta = numpyro.deterministic("raw_beta", raw_beta - raw_beta[-1])
 
     # How do we ensure identifiablity?
     # We need to make sure everything is relative to pivot

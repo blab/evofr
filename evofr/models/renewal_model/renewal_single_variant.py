@@ -7,7 +7,6 @@ from evofr.models.model_spec import ModelSpec
 from evofr.models.renewal_model.model_helpers import to_survivor_function
 from .basis_functions import BasisFunction, Spline
 
-from .LAS import LaplaceRandomWalk
 from .model_functions import forward_simulate_I_and_prev, reporting_to_vec
 from .model_options import NegBinomCases
 
@@ -34,8 +33,8 @@ def _single_renewal_model(
     obs_range = jnp.arange(seed_L, seed_L + T, 1)
 
     # Effective Reproduction number likelihood
-    gam = numpyro.sample("gam", dist.HalfNormal(1.0))
-    beta_0 = numpyro.sample("beta_0", dist.Normal(0.0, 1.0))
+    gam = numpyro.sample("gam", dist.HalfNormal(0.5))
+    beta_0 = numpyro.sample("beta_0", dist.Normal(0.0, 0.5))
     with numpyro.plate("N_steps_base", k - 1):
         beta_rw_step = numpyro.sample("beta_rw_step", dist.Laplace()) * gam
         beta_rw = numpyro.deterministic("beta_rw", jnp.cumsum(beta_rw_step))
