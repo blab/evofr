@@ -1,6 +1,5 @@
 from typing import Optional
-from jax import vmap
-from jax.interpreters.xla import DeviceArray
+from jax import vmap, Array
 import jax.numpy as jnp
 from .basis_fns import BasisFunction
 
@@ -8,7 +7,7 @@ from .basis_fns import BasisFunction
 class Spline(BasisFunction):
     def __init__(
         self,
-        s: Optional[DeviceArray] = None,
+        s: Optional[Array] = None,
         order: Optional[int] = None,
         k: Optional[int] = None,
     ):
@@ -71,7 +70,7 @@ class Spline(BasisFunction):
 
     def make_features(
         self, data: Optional[dict] = None, T: Optional[float] = None
-    ) -> DeviceArray:
+    ) -> Array:
         # Check for maximum time
         if T is None and data is not None:
             T = data["N"].shape[0]
@@ -86,7 +85,7 @@ class Spline(BasisFunction):
 class SplineDeriv:
     def __init__(
         self,
-        s: Optional[DeviceArray] = None,
+        s: Optional[Array] = None,
         order: Optional[int] = None,
         k: Optional[int] = None,
     ):
@@ -151,7 +150,7 @@ class SplineDeriv:
 
     def make_features(
         self, data: Optional[dict] = None, T: Optional[float] = None
-    ) -> DeviceArray:
+    ) -> Array:
         # Check for maximum time
         if T is None and data is not None:
             T = data["N"].shape[0]
