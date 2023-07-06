@@ -9,14 +9,14 @@ from .models import PianthamModel
 from .models import InnovationMLR, InnovationSequenceCounts
 from .models.renewal_model import *
 
-from .infer import SVIHandler, MCMCHandler, BlackJaxHandler
+from .infer import SVIHandler, MCMCHandler #, BlackJaxHandler
 from .infer import (
     InferSVI,
     InferMCMC,
     InferFullRank,
     InferMAP,
     InferNUTS,
-    InferBlackJax,
+    #InferBlackJax,
     init_to_MAP,
 )
 
