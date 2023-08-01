@@ -17,7 +17,7 @@ def prep_posterior_for_plot(
 
     samples:
         Dictionary with keys being site or variable names.
-        Values are DeviceArrays containing posterior samples
+        Values are Arrays containing posterior samples
         with shape (sample_number, site_shape).
 
     ps:
@@ -65,7 +65,7 @@ def plot_posterior_time(
         Median values.
 
     quants:
-        Quantiles to be plotted. Organized as a list of CIs as DeviceArrays.
+        Quantiles to be plotted. Organized as a list of CIs as Arrays.
 
     alphas:
         Transparency for each quantile.

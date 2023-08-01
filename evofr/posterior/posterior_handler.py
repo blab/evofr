@@ -18,7 +18,7 @@ class PosteriorHandler:
         ----------
         samples:
             optional dictionary with keys corresponding to variable names.
-            Values will be DeviceArrays containing posterior samples.
+            Values will be Arrays containing posterior samples.
 
         data:
             optional DataSpec instance containing underlying data from analysis

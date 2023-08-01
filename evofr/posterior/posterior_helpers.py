@@ -1,5 +1,6 @@
 from functools import partial
 from typing import Dict, List, Optional
+import jax
 import jax.numpy as jnp
 import json
 import numpy as np
@@ -16,7 +17,7 @@ def get_quantile(samples: Dict, p, site):
     ----------
     samples:
         Dictionary with keys being site or variable names.
-        Values are DeviceArrays with shape (sample_number, site_shape).
+        Values are Arrays with shape (sample_number, site_shape).
 
     p:
         Percent credible interval to return.
@@ -26,7 +27,7 @@ def get_quantile(samples: Dict, p, site):
 
     Returns
     -------
-    DeviceArray of shape (site_shape).
+    Array of shape (site_shape).
     """
     q = jnp.array([0.5 * (1 - p), 0.5 * (1 + p)])
     return jnp.quantile(samples[site], q=q, axis=0)
@@ -156,7 +157,7 @@ class EvofrEncoder(json.JSONEncoder):
             return round(float(obj), 3)
         if isinstance(obj, np.ndarray):
             return obj.tolist()
-        if isinstance(obj, jnp.DeviceArray):
+        if isinstance(obj, jax.Array):
             return self.default(np.array(obj))
         if isinstance(obj, pd.Timestamp):
             return obj.strftime("%Y-%m-%d")
