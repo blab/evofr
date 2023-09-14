@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from jax._src.nn.functions import softmax
+from jax import vmap
 import numpy as np
 import pandas as pd
 
@@ -67,22 +68,37 @@ class DeltaRegressionPrior(DeltaPriorModel):
         -------
         DeltaRegressionPrior
         """
-
-        self.features = features  # Should be shape (N_variants, n_features)
+        # Creature and process features (N_variants-1, n_features)
+        self.features = features[:-1, :]
         self.N_features = self.features.shape[-1]
+        self.is_missing = np.isnan(self.features).any(axis=1)
+        self.n_missing = self.is_missing.sum()
 
     def model(self, N_variants):
+        # Generate coefficients for features
         theta = numpyro.sample(
             "theta", dist.Normal(), sample_shape=(self.N_features,)
         )
-        delta_loc = numpyro.deterministic(
-            "delta_loc", jnp.dot(self.features, theta)
+
+        # Generate relative fitness where features present
+        delta_loc_present = jnp.dot(self.features[~self.is_missing, :], theta)
+        # Generate relative fitness where features missing
+        delta_loc_missing = numpyro.sample(
+            "delta_loc_missing",
+            dist.Normal(0.0, 3.0),
+            sample_shape=(self.n_missing,),
         )
+
+        # Combine delta_loc for missing and present predictors
+        delta_loc = jnp.empty(N_variants - 1)
+        delta_loc = delta_loc.at[~self.is_missing].set(delta_loc_present)
+        delta_loc = delta_loc.at[self.is_missing].set(delta_loc_missing)
+        numpyro.deterministic("delta_loc", delta_loc)
+
         delta_scale = numpyro.sample("delta_scale", dist.HalfNormal(0.1))
+
         raw_delta = numpyro.sample(
-            "raw_delta",
-            dist.Normal(delta_loc, delta_scale),
-            sample_shape=(N_variants - 1,),
+            "raw_delta", dist.Normal(delta_loc, delta_scale)
         )
         return raw_delta
 
@@ -94,6 +110,51 @@ class DeltaRegressionPrior(DeltaPriorModel):
         delta_loc = jnp.einsum("vf, sf -> sv", features, theta)
         prior_delta = np.random.normal(delta_loc, delta_scale)
         return delta_loc, prior_delta
+
+
+def MLR_innovation_model_time_varying(
+    seq_counts, N, innovation_matrix, delta_prior, tau=None, pred=False
+):
+    T, N_variants = seq_counts.shape
+    _, N_features = X.shape
+
+    # Sampling parameters for growth advantages
+    # Sampling intercepts
+    raw_alpha = numpyro.sample(
+        "raw_alpha",
+        dist.Normal(0.0, 3.0),
+        sample_shape=(N_variants - 1,),
+    )
+    alpha = numpyro.deterministic("alpha", jnp.append(raw_alpha, jnp.zeros(1)))
+
+    # Now we need to get the time varying growth advantages
+    # Sampling time-varying innovations from prior model
+    raw_delta = delta_prior.model(N_variants) # (T, V)
+    pivot_delta = jnp.dot(raw_delta,  innovation_matrix[-1,:-1])
+    delta = numpyro.deterministic("delta", jnp.append(raw_delta, -pivot_delta))
+
+    # Innovations to beta for growth advantages
+    # (V, V) * (T, V) -> (T, V) # Gotta make sure shape right?
+    mapped_dot = vmap(jnp.dot, in_axes=(None, 0), out_axes=0)
+    beta = numpyro.deterministic("beta",  mapped_dot(innovation_matrix, delta))
+
+    logits = alpha[:, None] + jnp.cumsum(beta, axis=0)
+    numpyro.deterministic("freq", softmax(logits, axis=-1))
+
+    # Evaluate likelihood of sequence counts given delays
+    # SeqLik.model(seq_counts, N, freq, pred)  # Evaluate likelihood
+
+    obs = None if pred else np.nan_to_num(seq_counts)
+    numpyro.sample(
+        "seq_counts",
+        dist.Multinomial(total_count=np.nan_to_num(N), logits=logits),
+        obs=obs,
+    )
+
+    # Compute growth advantage from model
+    if tau is not None:
+        numpyro.deterministic("ga", jnp.exp(beta * tau)[:-1])
+        numpyro.deterministic("ga_delta", jnp.exp(delta * tau))
 
 
 def MLR_innovation_model(
@@ -153,6 +214,7 @@ def MLR_innovation_model(
     # Compute growth advantage from model
     if tau is not None:
         numpyro.deterministic("ga", jnp.exp(raw_beta * tau)[:-1])
+        numpyro.deterministic("ga_delta", jnp.exp(delta * tau))
 
 
 class InnovationMLR(ModelSpec):
@@ -218,7 +280,7 @@ def prep_clade_list(
     # First check:
     # SHould be able to reduce to a faster solve maybe?
     var_names = (
-        list(raw_variant_parents.variant.values)
+        list(raw_variant_parents.variant.unique())
         if var_names is None
         else var_names
     )
@@ -229,6 +291,8 @@ def prep_clade_list(
     }
     for _, row in raw_variant_parents.iterrows():
         var = row["variant"]
+        if var not in var_names:
+            continue
         var_index = var_names.index(var)
 
         # Find ancestors and add to row

@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Dict, List, Optional
 import jax.numpy as jnp
 import json
@@ -292,6 +293,7 @@ def get_sites_variants_tidy(
     data: DataSpec,
     sites: List[str],
     dated: List[bool],
+    forecasts: List[bool],
     ps,
     name: Optional[str] = None,
 ):
@@ -324,7 +326,19 @@ def get_sites_variants_tidy(
     # Each data entry will be tidy
     date_map = data.date_to_index
 
-    def tidy_site_date(site):
+    for d, site, forecast in zip(dated, sites, forecasts):
+        if forecast and d:
+            # Check size of dated forecasts to generate date map
+            T = samples[site].shape[1]
+            forecasted_dates = forecast_dates(data.dates, T)
+            forecast_date_map = {
+                d: i for (i, d) in enumerate(forecasted_dates)
+            }
+            metadata["forecast_dates"] = forecasted_dates
+
+            break
+
+    def tidy_site_date(site, forecast):
         # Loop over entries of median and
         med, quants = get_quantiles(samples, ps, site)
         med, quants = np.array(med), np.array(quants)
@@ -332,11 +346,17 @@ def get_sites_variants_tidy(
         entries = []
         T, N_variants = med.shape
 
+        # Are we using original or forecast dates?
+        if forecast:
+            _date_map = forecast_date_map
+        else:
+            _date_map = date_map
+
         for v, variant in enumerate(metadata["variants"]):
-            if v+1 > N_variants:
+            if v + 1 > N_variants:
                 continue
 
-            for date, index in date_map.items():
+            for date, index in _date_map.items():
                 # Make template for entries
                 entry = {
                     "location": name,
@@ -383,7 +403,7 @@ def get_sites_variants_tidy(
         N_variants = med.shape[0]
 
         for v, variant in enumerate(metadata["variants"]):
-            if v+1 > N_variants:
+            if v + 1 > N_variants:
                 continue
 
             # Make template
@@ -407,14 +427,10 @@ def get_sites_variants_tidy(
                 entry_upper = entry.copy()
 
                 # Add values from intervals
-                entry_lower["value"] = np.around(
-                    quants[i][0, v], decimals=3
-                )
+                entry_lower["value"] = np.around(quants[i][0, v], decimals=3)
                 entry_lower["ps"] = f"HDI_{round(p * 100)}_lower"
 
-                entry_upper["value"] = np.around(
-                    quants[i][1, v], decimals=3
-                )
+                entry_upper["value"] = np.around(quants[i][1, v], decimals=3)
                 entry_upper["ps"] = f"HDI_{round(p * 100)}_upper"
 
                 # Add upper and lower bounds
@@ -423,8 +439,10 @@ def get_sites_variants_tidy(
         return entries
 
     entries = []
-    for d, site in zip(dated, sites):
-        tidy_site = tidy_site_date if d else tidy_site_flat
+    for d, site, forecast in zip(dated, sites, forecasts):
+        tidy_site = (
+            partial(tidy_site_date, forecast=forecast) if d else tidy_site_flat
+        )
         entries.extend(tidy_site(site))
 
     tidy_dict = {"metadata": metadata, "data": entries}
@@ -448,5 +466,5 @@ def combine_sites_tidy(tidy_dicts):
 
 def save_json(out: dict, path) -> None:
     with open(path, "w") as f:
-        json.dump(out, f, cls=EvofrEncoder)
+        json.dump(out, f, allow_nan=False, cls=EvofrEncoder)
     return None

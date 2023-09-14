@@ -1,5 +1,5 @@
 from typing import Optional
-from jax._src.device_array import DeviceArray
+from jax import Array
 import numpy as np
 import jax.numpy as jnp
 from jax.nn import softmax
@@ -61,7 +61,7 @@ class MLRSpline(ModelSpec):
     def __init__(
         self,
         tau: float,
-        s: Optional[DeviceArray] = None,
+        s: Optional[Array] = None,
         k: Optional[int] = None,
         order: Optional[int] = None,
     ) -> None:
@@ -72,7 +72,7 @@ class MLRSpline(ModelSpec):
         tau:
             Assumed generation time for conversion to relative R.
         s:
-            DeviceArray of knot locations for spline.
+            Array of knot locations for spline.
             Mutually exclusive argument with k.
         k:
             Number of basis elements.

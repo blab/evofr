@@ -9,8 +9,16 @@ from .models import PianthamModel
 from .models import InnovationMLR, InnovationSequenceCounts
 from .models.renewal_model import *
 
-from .infer import SVIHandler, MCMCHandler
-from .infer import InferSVI, InferMCMC, InferFullRank, InferMAP, InferNUTS, init_to_MAP
+from .infer import SVIHandler, MCMCHandler #, BlackJaxHandler
+from .infer import (
+    InferSVI,
+    InferMCMC,
+    InferFullRank,
+    InferMAP,
+    InferNUTS,
+    #InferBlackJax,
+    init_to_MAP,
+)
 
 from .posterior import PosteriorHandler, MultiPosterior
 from .posterior import get_median, get_quantile, get_quantiles
