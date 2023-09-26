@@ -28,7 +28,7 @@ def compute_frequency_piantham(ga, q0, gen_rev, T):
 
     Returns
     -------
-    Simulated frequencies as DeviceArray.
+    Simulated frequencies as Array.
     """
     _ga = jnp.append(ga, 1.0)
     max_age = gen_rev.shape[-1]
