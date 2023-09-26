@@ -34,7 +34,7 @@ def hier_MLR_time_numpyro(
 
     # Sampling intercept and fitness parameters
     reparam_config = {
-        "beta_loc": TransformReparam(),
+        "beta_loc_step": TransformReparam(),
         "beta_scale": TransformReparam(),
         "alpha": TransformReparam(),
         "raw_beta": TransformReparam(),
@@ -50,13 +50,17 @@ def hier_MLR_time_numpyro(
         with numpyro.plate("feature", N_features, dim=-3):
             with numpyro.plate("variants", N_variants - 1, dim=-2):
                 # Define loc and scale for fitness beta
-                beta_loc = numpyro.sample(
-                    "beta_loc",
+                beta_loc_step = numpyro.sample(
+                    "beta_loc_step",
                     dist.TransformedDistribution(
                         dist.Normal(0.0, 1.0),
                         dist.transforms.AffineTransform(0.0, 0.2),
                     ),
                 )
+
+                beta_loc = numpyro.deterministic(
+                    "beta_loc", jnp.cumsum(beta_loc_step, axis=0)
+                )  # Turn into random walk
 
                 # Use location and scale parameter to draw within group
                 with numpyro.plate("group", N_groups, dim=-1):
@@ -107,8 +111,10 @@ def hier_MLR_time_numpyro(
     numpyro.deterministic("freq", softmax(logits, axis=1))
 
     # Compute growth advantage from model
+    delta = numpyro.deterministic(
+        "delta", jnp.einsum("tfg, fvg -> tvg", X_deriv, beta[:, :-1, :])
+    )
     if tau is not None:
-        delta = jnp.einsum("tfg, fvg -> tvg", X_deriv, beta[:, :-1, :])
         numpyro.deterministic(
             "ga", jnp.exp(delta * tau)
         )  # Last row corresponds to linear predictor / growth advantage
