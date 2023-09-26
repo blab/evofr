@@ -123,9 +123,7 @@ def hier_MLR_time_numpyro(
         )
         numpyro.deterministic("ga_loc", jnp.exp(delta_loc * tau))
 
-
-# TODO: Make features and allow easy forecasts?
-# TODO: How we want to model the change in the frequencies to allow simulating ga further out.
+    return None
 
 
 class HierMLRTime(ModelSpec):
@@ -194,26 +192,36 @@ class HierMLRTime(ModelSpec):
             self.basis_fn_deriv.make_features(data), G
         )
 
-    @staticmethod
-    def forecast_frequencies(samples, forecast_L):
+    def forecast_frequencies(self, samples, forecast_L, tau=None):
         """
         Use posterior beta to forecast posterior frequencies.
         """
 
-        # Making feature matrix for forecasting
-        last_T = samples["freq"].shape[1]
-        n_groups = samples["freq"].shape[-1]
+        # Let's project based on last values of delta
+        # TODO: Add multple options for forecasting based on delta estimates
+        # Options to consider: n_avearage, exponential smoothing, .etc
+        delta = jnp.array(samples["delta"])
+        n_samples, _, _, n_group = delta.shape
+        delta_pred = jnp.mean(
+            delta[:, -14:, :, :], axis=1
+        )  # Using two-week average relative_fitness
+        delta_pred = jnp.concatenate(
+            (delta_pred, jnp.zeros((n_samples, 1, n_group))), axis=1
+        )
 
-        # X = HierMLRTime.make_ols_feature(
-        #    start=last_T, stop=last_T + forecast_L, n_groups=n_groups
-        # )
-
-        # (T, F, G) times (F, V, G) -> (T, V, G)
-        dot_by_group = vmap(jnp.dot, in_axes=(-1, -1), out_axes=-1)
-        dbg_by_sample = vmap(dot_by_group, in_axes=(None, 0), out_axes=0)
+        # Linearly extrapolate based on delta_pred
+        forecast_times = jnp.arange(0, forecast_L)
+        delta_pred = (
+            delta_pred[:, None, :, :] * forecast_times[None, :, None, None]
+        )
 
         # Creating frequencies from posterior beta
-        # beta = jnp.array(samples["beta"])
-        # logits = dbg_by_sample(X, beta)
-        # samples["freq_forecast"] = softmax(logits, axis=-2)  # (S, T, V, G)
+        logits = jnp.log(samples["freq"])[:, -1, :, :]
+        logits = (
+            logits[:, None, :, :] + delta_pred
+        )  # Project based on delta_pred
+        samples["freq_forecast"] = softmax(logits, axis=-2)  # (S, T, V, G)
+        if tau is None:
+            tau = self.tau
+        samples["ga_forecast"] = jnp.exp(delta_pred * tau)
         return samples
