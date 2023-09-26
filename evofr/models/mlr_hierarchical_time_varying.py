@@ -192,7 +192,7 @@ class HierMLRTime(ModelSpec):
             self.basis_fn_deriv.make_features(data), G
         )
 
-    def forecast_frequencies(self, samples, forecast_L, tau=None):
+    def forecast_frequencies(self, samples, forecast_L, tau=None, linear=False, mean_len=7):
         """
         Use posterior beta to forecast posterior frequencies.
         """
@@ -203,14 +203,17 @@ class HierMLRTime(ModelSpec):
         delta = jnp.array(samples["delta"])
         n_samples, _, _, n_group = delta.shape
         delta_pred = jnp.mean(
-            delta[:, -14:, :, :], axis=1
+            delta[:, -mean_len:, :, :], axis=1
         )  # Using two-week average relative_fitness
         delta_pred = jnp.concatenate(
             (delta_pred, jnp.zeros((n_samples, 1, n_group))), axis=1
         )
 
-        # Linearly extrapolate based on delta_pred
-        forecast_times = jnp.arange(0, forecast_L)
+        # Extrapolate based on linear approximate delta_pred
+        if linear:
+            forecast_times = jnp.arange(0., forecast_L) + 1
+        else: # Keep delta_pred constant
+            forecast_times = jnp.ones(forecast_L)
         delta_pred = (
             delta_pred[:, None, :, :] * forecast_times[None, :, None, None]
         )
@@ -218,8 +221,8 @@ class HierMLRTime(ModelSpec):
         # Creating frequencies from posterior beta
         logits = jnp.log(samples["freq"])[:, -1, :, :]
         logits = (
-            logits[:, None, :, :] + delta_pred
-        )  # Project based on delta_pred
+            logits[:, None, :, :] + jnp.cumsum(delta_pred, axis=1)
+        )  # Project based on delta_pred: adding cummulatively in time
         samples["freq_forecast"] = softmax(logits, axis=-2)  # (S, T, V, G)
         if tau is None:
             tau = self.tau
