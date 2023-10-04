@@ -45,7 +45,7 @@ def mut_dist_ll(pred_freq, next_init_freq, distances, mu, t, deltaT):
 
 
 def strain_distance_numpyro(
-    init_freq, distances, predictors, deltaT=1, pred=False
+    init_freq, distances, predictors, deltaT=1, pred=False, mu=None
 ):
     """Fit a strain distance model using MLR type model
     to project frequencies and compare distances between populations.
@@ -74,10 +74,11 @@ def strain_distance_numpyro(
     # Get coefficients for each predictors
     P = predictors[0].shape[-1]  # [(S_{1}, P), ..., (S_{T+1}, P)]
     with numpyro.plate("predictors", P):
-        coef = numpyro.sample("coefficients", dist.Normal(0.0, 3.0))
+        coef = numpyro.sample("coefficients", dist.Normal(0.0, 5.0))
 
     # Get mutation rate: (Expected mutations per unit time)
-    mu = numpyro.sample("mu", dist.Exponential(10.0))
+    if mu is None:
+        mu = numpyro.sample("mu", dist.Exponential(0.5))
 
     # Pivot value for fitness
     for g in range(G - 1):
@@ -105,7 +106,7 @@ def strain_distance_numpyro(
 
 
 class StrainDistanceModel(ModelSpec):
-    def __init__(self) -> None:
+    def __init__(self, mu=None) -> None:
         """Construct ModelSpec for StrainDistanceModel
 
         Parameters
@@ -117,9 +118,10 @@ class StrainDistanceModel(ModelSpec):
         StrainDistanceModel
         """
         self.model_fn = strain_distance_numpyro
+        self.mu = mu
 
     def augment_data(self, data: dict) -> None:
-        pass
+        data["mu"] = self.mu
 
 
 class StrainDistanceData(DataSpec):
@@ -146,4 +148,4 @@ class StrainDistanceData(DataSpec):
 # - Also need distances
 
 # TODO: Decide whether we take representative strains or not
-####
+# TODO: Add prior rate for mu_prior
