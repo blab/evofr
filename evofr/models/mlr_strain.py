@@ -44,8 +44,37 @@ def mut_dist_ll(pred_freq, next_init_freq, distances, mu, t, deltaT):
     return None
 
 
+def mut_ancestor_ll(pred_freq, distances, ancestors, mu, t, deltaT):
+    # We only need distances between ancestors
+    S_now, S_next = distances.shape
+    ancestor_distances = (ancestors, np.arange(S_next))
+
+    # Compute distances between ancestors
+    numpyro.sample(
+        f"ancestor_distances_{t}",
+        dist.Poisson(mu * deltaT),
+        obs=distances[ancestor_distances],
+    )
+
+    # Count unique ancestors and compare to prob of descendence
+    ancestor_counts = (ancestors == np.arange(S_now)[:, None]).sum(axis=1)
+    numpyro.sample(
+        f"ancestor_counts_{t}",
+        dist.Multinomial(ancestor_counts.sum(), pred_freq),
+        obs=ancestor_counts,
+    )
+    return None
+
+
 def strain_distance_numpyro(
-    init_freq, distances, predictors, deltaT=1, pred=False, mu=None
+    init_freq,
+    distances,
+    predictors,
+    counts,
+    ancestors,
+    deltaT=1,
+    pred=False,
+    mu=None,
 ):
     """Fit a strain distance model using MLR type model
     to project frequencies and compare distances between populations.
@@ -64,6 +93,15 @@ def strain_distance_numpyro(
     predictors:
         List of predictor matrices for the members of each generation.
         Each element of list should have shape (S_{g}, P).
+
+    counts:
+        List of length G containing counts of strains for each generation.
+        Each element of list should have shape (S_{g},).
+
+    ancestors:
+        List of length G containing ancestors of samples of a generation.
+        Each element of the list should have shape (S_{g+1}, ) and
+        should contain values between 0 and S_{g}.
     """
     # We'll have a list of distance matrices between time points
     G = len(predictors)
@@ -80,6 +118,16 @@ def strain_distance_numpyro(
     if mu is None:
         mu = numpyro.sample("mu", dist.Exponential(0.5))
 
+    # If counts are present, get analytic posterior for frequencies
+    if init_freq is None and counts is not None:
+        init_freq = []
+        for g in range(G):
+            init_freq.append(
+                numpyro.sample(
+                    f"init_freq_{g}", dist.Dirichlet(1.0 + counts[g])
+                )
+            )
+
     # Pivot value for fitness
     for g in range(G - 1):
         # Compute fitnesses and project
@@ -92,7 +140,14 @@ def strain_distance_numpyro(
         )
 
         # Get distances and compute likelihood
-        mut_dist_ll(proj_freq, init_freq[g + 1], distances[g], mu, g, deltaT)
+        if ancestors is None:
+            mut_dist_ll(
+                proj_freq, init_freq[g + 1], distances[g], mu, g, deltaT
+            )
+        else:
+            mut_ancestor_ll(
+                proj_freq, distances[g], ancestors[g], mu, g, deltaT
+            )
 
     if pred:
         # Compute fitnesses and project
@@ -125,10 +180,14 @@ class StrainDistanceModel(ModelSpec):
 
 
 class StrainDistanceData(DataSpec):
-    def __init__(self, init_freq, predictors, distances) -> None:
+    def __init__(
+        self, init_freq, predictors, distances, ancestors=None, counts=None
+    ) -> None:
         self.init_freq = init_freq
         self.predictors = predictors
         self.distances = distances
+        self.ancestors = ancestors
+        self.counts = counts
 
     def make_data_dict(self, data: Optional[dict] = None) -> dict:
         if data is None:
@@ -137,6 +196,8 @@ class StrainDistanceData(DataSpec):
         data["init_freq"] = self.init_freq
         data["predictors"] = self.predictors
         data["distances"] = self.distances
+        data["counts"] = self.counts
+        data["ancestors"] = self.ancestors
         return data
 
 
