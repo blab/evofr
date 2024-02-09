@@ -9,9 +9,9 @@ license = "AGPL-3.0"
 python = "^3.9"
 numpy = "^1.22.4"
 pandas = "^1.4.2"
-jax = "^0.4.1"
+jax = "^0.4.14"
 jaxlib = "^0.4.1"
-numpyro = "^0.12.0"
+numpyro = "^0.13.2"
 blackjax = "^0.9.6"
 
 [tool.poetry.dev-dependencies]
