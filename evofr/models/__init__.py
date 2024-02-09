@@ -7,3 +7,4 @@ from .mlr_nowcast import *
 from .mlr_spline import *
 from .mlr_innovation import *
 from .mlr_hierarchical_time_varying import HierMLRTime
+from .migration_from_distances import *
