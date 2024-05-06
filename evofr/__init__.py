@@ -30,3 +30,7 @@ from .posterior import (
     EvofrEncoder,
     save_json,
 )
+
+import importlib.metadata
+
+__version__ = importlib.metadata.version("evofr")
