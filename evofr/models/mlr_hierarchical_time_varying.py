@@ -156,7 +156,7 @@ class HierMLRTime(ModelSpec):
 
         Returns
         -------
-        HierMLR
+        HierMLRTime
         """
         self.tau = tau  # Fixed generation time
         self.pool_scale = pool_scale  # Prior std for coefficients
