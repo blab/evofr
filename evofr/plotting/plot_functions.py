@@ -1,4 +1,5 @@
 from typing import Callable, List, Optional
+
 import jax.numpy as jnp
 
 from evofr.posterior.posterior_helpers import get_median, get_quantiles
@@ -80,9 +81,7 @@ def plot_posterior_time(
 
     for variant in range(med.shape[-1]):
         v_included = (
-            jnp.arange(0, med.shape[0])
-            if included is None
-            else included[:, variant]
+            jnp.arange(0, med.shape[0]) if included is None else included[:, variant]
         )
         for i in range(len(quants)):
             ax.fill_between(
@@ -95,6 +94,13 @@ def plot_posterior_time(
         ax.plot(t[v_included], med[v_included, variant], color=colors[variant])
 
 
+def plot_site(ax, site, samples, ps, alphas, colors, forecast, times):
+    t, med, quants = prep_posterior_for_plot(site, samples, ps, forecast=forecast)
+    plot_posterior_time(
+        ax, t if times is not None else times, med, quants, alphas, colors
+    )
+
+
 def plot_R(
     ax,
     samples,
@@ -104,9 +110,7 @@ def plot_R(
     forecast: Optional[bool] = False,
     plot_neutral_line: Optional[bool] = True,
 ):
-    t, med, quants = prep_posterior_for_plot(
-        "R", samples, ps, forecast=forecast
-    )
+    t, med, quants = prep_posterior_for_plot("R", samples, ps, forecast=forecast)
     if plot_neutral_line:
         ax.axhline(y=1.0, color="k", linestyle="--")
     plot_posterior_time(ax, t, med, quants, alphas, colors)
@@ -122,16 +126,12 @@ def plot_R_censored(
     thres: Optional[float] = 0.001,
     plot_neutral_line: Optional[bool] = True,
 ):
-    t, med, quants = prep_posterior_for_plot(
-        "R", samples, ps, forecast=forecast
-    )
+    t, med, quants = prep_posterior_for_plot("R", samples, ps, forecast=forecast)
     if plot_neutral_line:
         ax.axhline(y=1.0, color="k", linestyle="--")
 
     # Plot only variants at high enough frequency
-    _, freq_median, _ = prep_posterior_for_plot(
-        "freq", samples, ps, forecast=forecast
-    )
+    _, freq_median, _ = prep_posterior_for_plot("freq", samples, ps, forecast=forecast)
     included = freq_median > thres
 
     plot_posterior_time(ax, t, med, quants, alphas, colors, included=included)
@@ -152,9 +152,7 @@ def plot_posterior_average_R(
     if plot_neutral_line:
         ax.axhline(y=1.0, color="k", linestyle="--")
     for i in range(len(ps)):
-        ax.fill_between(
-            t, V[i][0, :], V[i][1, :], color=color, alpha=alphas[i]
-        )
+        ax.fill_between(t, V[i][0, :], V[i][1, :], color=color, alpha=alphas[i])
     ax.plot(t, med, color=color)
 
 
@@ -168,16 +166,12 @@ def plot_little_r_censored(
     thres: Optional[float] = 0.001,
     plot_neutral_line: Optional[bool] = False,
 ):
-    t, med, quants = prep_posterior_for_plot(
-        "r", samples, ps, forecast=forecast
-    )
+    t, med, quants = prep_posterior_for_plot("r", samples, ps, forecast=forecast)
     if plot_neutral_line:
         ax.axhline(y=0.0, color="k", linestyle="--")
 
     # Plot only variants at high enough frequency
-    _, freq_median, _ = prep_posterior_for_plot(
-        "freq", samples, ps, forecast=forecast
-    )
+    _, freq_median, _ = prep_posterior_for_plot("freq", samples, ps, forecast=forecast)
     included = freq_median > thres
 
     plot_posterior_time(ax, t, med, quants, alphas, colors, included=included)
@@ -191,9 +185,7 @@ def plot_posterior_frequency(
     colors: List[str],
     forecast: Optional[bool] = False,
 ):
-    t, med, quants = prep_posterior_for_plot(
-        "freq", samples, ps, forecast=forecast
-    )
+    t, med, quants = prep_posterior_for_plot("freq", samples, ps, forecast=forecast)
     plot_posterior_time(ax, t, med, quants, alphas, colors)
 
 
@@ -202,9 +194,7 @@ def plot_observed_frequency(ax, LD, colors: List[str]):
     N_variant = obs_freq.shape[-1]
     t = jnp.arange(0, obs_freq.shape[0])
     for variant in range(N_variant):
-        ax.scatter(
-            t, obs_freq[:, variant], color=colors[variant], edgecolor="black"
-        )
+        ax.scatter(t, obs_freq[:, variant], color=colors[variant], edgecolor="black")
 
 
 def plot_observed_frequency_size(ax, LD, colors: List[str], size: Callable):
@@ -231,9 +221,7 @@ def plot_posterior_I(
     colors: List[str],
     forecast: Optional[bool] = False,
 ):
-    t, med, quants = prep_posterior_for_plot(
-        "I_smooth", samples, ps, forecast=forecast
-    )
+    t, med, quants = prep_posterior_for_plot("I_smooth", samples, ps, forecast=forecast)
     plot_posterior_time(ax, t, med, quants, alphas, colors)
 
 
@@ -245,9 +233,7 @@ def plot_posterior_smooth_EC(
 
     # Make figure
     for i in range(len(ps)):
-        ax.fill_between(
-            t, V[i][0, :], V[i][1, :], color=color, alpha=alphas[i]
-        )
+        ax.fill_between(t, V[i][0, :], V[i][1, :], color=color, alpha=alphas[i])
     ax.plot(t, med, color=color)
 
 
@@ -259,7 +245,7 @@ def plot_cases(ax, LD):
 def add_dates(ax, dates, sep=1):
     t = []
     labels = []
-    for (i, date) in enumerate(dates):
+    for i, date in enumerate(dates):
         if int(date.strftime("%d")) == 1:
             labels.append(date.strftime("%b"))
             t.append(i)
@@ -270,7 +256,7 @@ def add_dates(ax, dates, sep=1):
 def add_dates_sep(ax, dates, sep=7):
     t = []
     labels = []
-    for (i, date) in enumerate(dates):
+    for i, date in enumerate(dates):
         if (i % sep) == 0:
             labels.append(date.strftime("%b %d"))
             t.append(i)
@@ -323,18 +309,15 @@ def plot_ga_time_censored(
     forecast: Optional[bool] = False,
     thres: Optional[float] = 0.001,
     plot_pivot_line: Optional[bool] = True,
+    dates: Optional[List] = None,
 ):
-    t, med, quants = prep_posterior_for_plot(
-        "ga", samples, ps, forecast=forecast
-    )
+    t, med, quants = prep_posterior_for_plot("ga", samples, ps, forecast=forecast)
 
     if plot_pivot_line:
         ax.axhline(y=1.0, color="k", linestyle="--")
 
     # Plot only variants at high enough frequency
-    _, freq_median, _ = prep_posterior_for_plot(
-        "freq", samples, ps, forecast=forecast
-    )
+    _, freq_median, _ = prep_posterior_for_plot("freq", samples, ps, forecast=forecast)
     included = freq_median > thres
 
     plot_posterior_time(ax, t, med, quants, alphas, colors, included=included)
@@ -408,17 +391,13 @@ def plot_ppc_seq_counts(
     plot_posterior_time(ax, t, med, quants, alphas, colors)
 
 
-def plot_ppc_cases(
-    ax, samples, ps: List[float], alphas: List[float], color: str
-):
+def plot_ppc_cases(ax, samples, ps: List[float], alphas: List[float], color: str):
     med, V = get_quantiles(samples, ps, "cases")
     t = jnp.arange(0, V[-1].shape[-1], 1)
 
     # Make figure
     for i in range(len(ps)):
-        ax.fill_between(
-            t, V[i][0, :], V[i][1, :], color=color, alpha=alphas[i]
-        )
+        ax.fill_between(t, V[i][0, :], V[i][1, :], color=color, alpha=alphas[i])
     ax.plot(t, med, color=color)
 
 
@@ -431,9 +410,7 @@ def plot_time_varying_variant(
     colors: List[str],
     forecast: Optional[bool] = False,
 ):
-    t, med, quants = prep_posterior_for_plot(
-        site, samples, ps, forecast=forecast
-    )
+    t, med, quants = prep_posterior_for_plot(site, samples, ps, forecast=forecast)
     plot_posterior_time(ax, t, med, quants, alphas, colors)
 
 
@@ -445,7 +422,5 @@ def plot_time_varying_single(
 
     # Make figure
     for i in range(len(ps)):
-        ax.fill_between(
-            t, V[i][0, :], V[i][1, :], color=color, alpha=alphas[i]
-        )
+        ax.fill_between(t, V[i][0, :], V[i][1, :], color=color, alpha=alphas[i])
     ax.plot(t, med, color=color)
