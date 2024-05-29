@@ -1,4 +1,5 @@
 import pandas as pd
+
 from evofr.data import VariantFrequencies
 from evofr.data.hier_frequencies import HierFrequencies
 

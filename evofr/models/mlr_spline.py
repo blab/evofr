@@ -1,24 +1,20 @@
 from typing import Optional
-from jax import Array
-import numpy as np
-import jax.numpy as jnp
-from jax.nn import softmax
 
+import jax.numpy as jnp
+import numpy as np
 import numpyro
 import numpyro.distributions as dist
+from jax import Array
+from jax.nn import softmax
 
 from evofr.models.renewal_model.basis_functions.basis_fns import BasisFunction
-from evofr.models.renewal_model.basis_functions.splines import (
-    Spline,
-    SplineDeriv,
-)
+from evofr.models.renewal_model.basis_functions.splines import (Spline,
+                                                                SplineDeriv)
 
 from .model_spec import ModelSpec
 
 
-def MLR_spline_numpyro(
-    seq_counts, N, X, X_deriv, tau=None, pred=False, var_names=None
-):
+def MLR_spline_numpyro(seq_counts, N, X, X_deriv, tau=None, pred=False, var_names=None):
     _, N_variants = seq_counts.shape
     _, N_features = X.shape
 

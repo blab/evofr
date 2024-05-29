@@ -8,6 +8,7 @@ class ModelSpec(ABC):
     Classes which inherit from ModelSpec must have an attribute 'model_fn'
     which defines the function to be used for inference in numpyro.
     """
+
     model_fn: Callable
 
     @abstractmethod

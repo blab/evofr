@@ -1,6 +1,5 @@
-from evofr import RenewalModel
-from evofr import pad_delays, discretise_gamma, discretise_lognorm
-from evofr import GARW, ZINegBinomCases, DirMultinomialSeq
+from evofr import (GARW, DirMultinomialSeq, RenewalModel, ZINegBinomCases,
+                   discretise_gamma, discretise_lognorm, pad_delays)
 
 
 def test_init():

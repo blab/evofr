@@ -1,14 +1,14 @@
 from functools import partial
 from typing import Optional
-from jax._src.interpreters.batching import Array
-import numpy as np
-from jax import vmap, jit
-import jax.numpy as jnp
-from jax.nn import softmax
-from jax.scipy.special import gammaln
 
+import jax.numpy as jnp
+import numpy as np
 import numpyro
 import numpyro.distributions as dist
+from jax import jit, vmap
+from jax._src.interpreters.batching import Array
+from jax.nn import softmax
+from jax.scipy.special import gammaln
 from numpyro.infer.reparam import TransformReparam
 
 from .model_spec import ModelSpec
@@ -77,23 +77,14 @@ class SquaredExponential(HSGaussianProcess):
         """
         self.alpha = alpha
         self.rho = rho
-        super().__init__(
-            L=L if L else 10.0, num_basis=num_basis if num_basis else 50
-        )
+        super().__init__(L=L if L else 10.0, num_basis=num_basis if num_basis else 50)
 
     @staticmethod
     def spd(alpha: float, rho: float, w: Array):
-        return (
-            alpha
-            * jnp.sqrt(2 * jnp.pi)
-            * rho
-            * jnp.exp(-0.5 * jnp.square(rho * w))
-        )
+        return alpha * jnp.sqrt(2 * jnp.pi) * rho * jnp.exp(-0.5 * jnp.square(rho * w))
 
     def model(self):
-        alpha = assign_priors(
-            "alpha", self.alpha, default=dist.HalfNormal(1e-3)
-        )
+        alpha = assign_priors("alpha", self.alpha, default=dist.HalfNormal(1e-3))
         rho = assign_priors("rho", self.rho, default=dist.HalfNormal(25))
         return self.spd(alpha, rho, jnp.sqrt(self.lams))
 
@@ -110,9 +101,7 @@ class Matern(HSGaussianProcess):
         self.alpha = alpha
         self.rho = rho
         self.nu = nu if nu else 5 / 2
-        super().__init__(
-            L=L if L else 10.0, num_basis=num_basis if num_basis else 50
-        )
+        super().__init__(L=L if L else 10.0, num_basis=num_basis if num_basis else 50)
 
     @staticmethod
     def spd(alpha: float, rho: float, nu: float, w: Array):
@@ -131,9 +120,7 @@ class Matern(HSGaussianProcess):
         return coef * jnp.power(base, expon)
 
     def model(self):
-        alpha = assign_priors(
-            "alpha", self.alpha, default=dist.HalfNormal(1e-3)
-        )
+        alpha = assign_priors("alpha", self.alpha, default=dist.HalfNormal(1e-3))
         rho = assign_priors("rho", self.rho, default=dist.HalfNormal(25))
         return self.spd(alpha, rho, self.nu, jnp.sqrt(self.lams))
 
@@ -191,9 +178,7 @@ def hier_MLR_hsgp_numpyro(
                         "raw_beta",
                         dist.TransformedDistribution(
                             dist.Normal(0.0, 1.0),
-                            dist.transforms.AffineTransform(
-                                beta_loc, beta_scale
-                            ),
+                            dist.transforms.AffineTransform(beta_loc, beta_scale),
                         ),
                     )
 
@@ -232,9 +217,7 @@ def hier_MLR_hsgp_numpyro(
     )
 
     # Re-ordering so groups are last
-    seq_counts = numpyro.deterministic(
-        "seq_counts", jnp.swapaxes(_seq_counts, 2, 1)
-    )
+    seq_counts = numpyro.deterministic("seq_counts", jnp.swapaxes(_seq_counts, 2, 1))
 
     # Compute frequency
     numpyro.deterministic("freq", softmax(logits, axis=1))
@@ -315,9 +298,7 @@ class HierMLR_HSGP(ModelSpec):
             forecast_times = jnp.arange(0.0, forecast_L) + 1
         else:  # Keep delta_pred constant
             forecast_times = jnp.ones(forecast_L)
-        delta_pred = (
-            delta_pred[:, None, :, :] * forecast_times[None, :, None, None]
-        )
+        delta_pred = delta_pred[:, None, :, :] * forecast_times[None, :, None, None]
 
         # Creating frequencies from posterior beta
         logits = jnp.log(samples["freq"])[:, -1, :, :]

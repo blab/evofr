@@ -1,19 +1,15 @@
+import pickle
 from typing import Callable, Optional
-from jax import random, lax
-from jax import jit
-import jax.example_libraries.optimizers as optimizers
 
+import jax.example_libraries.optimizers as optimizers
+from jax import jit, lax, random
 from numpyro.infer import SVI, Predictive, Trace_ELBO
 from numpyro.infer.autoguide import AutoGuide
 from numpyro.infer.svi import SVIState
 
-import pickle
-
 
 class SVIHandler:
-    def __init__(
-        self, rng_key=1, loss=Trace_ELBO(num_particles=2), optimizer=None
-    ):
+    def __init__(self, rng_key=1, loss=Trace_ELBO(num_particles=2), optimizer=None):
         """
         Construct SVI handler.
 
@@ -45,16 +41,10 @@ class SVIHandler:
             self.svi_state = svi_state
         return self
 
-    def fit(
-        self, model: Callable, guide: AutoGuide, data: dict, n_epochs: int
-    ):
+    def fit(self, model: Callable, guide: AutoGuide, data: dict, n_epochs: int):
         self.init_svi(model, guide, data)
         self.svi_result = self.svi.run(
-            self.rng_key,
-            n_epochs,
-            **data,
-            progress_bar=False,
-            stable_update=True
+            self.rng_key, n_epochs, **data, progress_bar=False, stable_update=True
         )
         self.svi_state = self.svi_result.state
 
@@ -92,9 +82,7 @@ class SVIHandler:
 
     def save_state(self, fp):
         with open(fp, "wb") as f:
-            pickle.dump(
-                optimizers.unpack_optimizer_state(self.optim_state[1]), f
-            )
+            pickle.dump(optimizers.unpack_optimizer_state(self.optim_state[1]), f)
 
     def load_state(self, fp):
         with open(fp, "rb") as f:

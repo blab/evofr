@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
+
 from jax import Array
+
 
 class BasisFunction(ABC):
 

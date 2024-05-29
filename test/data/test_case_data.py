@@ -1,6 +1,6 @@
 import pandas as pd
-from evofr.data import CaseCounts
-from evofr.data import HierCases
+
+from evofr.data import CaseCounts, HierCases
 
 # TEST_CASES = pd.read_csv(
 #     "../rt-from-frequency-dynamics/data/omicron-us-split/omicron-us-split_location-case-counts.tsv",

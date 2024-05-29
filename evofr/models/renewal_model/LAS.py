@@ -1,17 +1,14 @@
 import jax.numpy as jnp
 import jax.random as random
-
 import numpyro
-from numpyro.distributions import constraints, HalfCauchy, Laplace
+from numpyro.distributions import HalfCauchy, Laplace, constraints
 from numpyro.distributions.distribution import Distribution
-from numpyro.distributions.util import (
-    is_prng_key,
-    validate_sample,
-)
+from numpyro.distributions.util import is_prng_key, validate_sample
 
 
 class LaplaceRandomWalk(Distribution):
     """Laplace random walk based on numpyro built in Gaussian Random Walk."""
+
     arg_constraints = {"scale": constraints.positive}
     support = constraints.real_vector
     reparametrized_params = ["scale"]

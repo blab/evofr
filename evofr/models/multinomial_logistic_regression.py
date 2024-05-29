@@ -1,15 +1,15 @@
 from functools import partial
 from typing import Optional
-import numpy as np
+
 import jax.numpy as jnp
+import numpy as np
+import numpyro
+import numpyro.distributions as dist
 from jax import vmap
 from jax.nn import softmax
 
-import numpyro
-import numpyro.distributions as dist
-
-from .renewal_model.model_options import DirMultinomialSeq
 from .model_spec import ModelSpec
+from .renewal_model.model_options import DirMultinomialSeq
 
 
 def simulate_MLR_freq(growth_advantage, freq0, tau, max_time):
@@ -22,9 +22,7 @@ def simulate_MLR_freq(growth_advantage, freq0, tau, max_time):
 def simulate_MLR(growth_advantage, freq0, tau, Ns):
     max_time = len(Ns)
     freq = simulate_MLR_freq(growth_advantage, freq0, tau, max_time)
-    seq_counts = [
-        np.random.multinomial(Ns[t], freq[t, :]) for t in range(max_time)
-    ]
+    seq_counts = [np.random.multinomial(Ns[t], freq[t, :]) for t in range(max_time)]
     return freq, np.stack(seq_counts)
 
 
@@ -66,9 +64,7 @@ def MLR_numpyro(
         obs = None if pred else np.nan_to_num(seq_counts)
         numpyro.sample(
             "seq_counts",
-            dist.MultinomialLogits(
-                logits=logits, total_count=np.nan_to_num(N)
-            ),
+            dist.MultinomialLogits(logits=logits, total_count=np.nan_to_num(N)),
             obs=obs,
         )
 
@@ -127,9 +123,7 @@ class MultinomialLogisticRegression(ModelSpec):
     def augment_data(self, data: dict) -> None:
         T = len(data["N"])
         data["tau"] = self.tau
-        data["X"] = self.make_ols_feature(
-            0, T
-        )  # Use intercept and time as predictors
+        data["X"] = self.make_ols_feature(0, T)  # Use intercept and time as predictors
 
     @staticmethod
     def forecast_frequencies(samples, forecast_L):

@@ -1,18 +1,19 @@
 from typing import List, Optional
-from jax._src.nn.functions import softmax
+
 import jax.numpy as jnp
 import numpy as np
-from jax import jit, lax
-
-from evofr.models.renewal_model.basis_functions.basis_fns import BasisFunction
-from .LAS import LaplaceRandomWalk
 import numpyro
 import numpyro.distributions as dist
-from .model_functions import reporting_to_vec
-from .model_options import NegBinomCases, DirMultinomialSeq
+from jax import jit, lax
+from jax._src.nn.functions import softmax
 
 from evofr.models.model_spec import ModelSpec
+from evofr.models.renewal_model.basis_functions.basis_fns import BasisFunction
+
 from .basis_functions import Spline
+from .LAS import LaplaceRandomWalk
+from .model_functions import reporting_to_vec
+from .model_options import DirMultinomialSeq, NegBinomCases
 
 
 def renewal_regression_model_factory(
@@ -76,9 +77,7 @@ def renewal_regression_model_factory(
 
         numpyro.deterministic("R", Rt)
         numpyro.deterministic("ga", ga)
-        numpyro.deterministic(
-            "r", jnp.diff(jnp.log(incidence), prepend=0.0, axis=0)
-        )
+        numpyro.deterministic("r", jnp.diff(jnp.log(incidence), prepend=0.0, axis=0))
 
     return _variant_model
 
@@ -116,9 +115,7 @@ class RenewalRegressionModel(ModelSpec):
 
         # Making basis expansion for Rt
         self.k = k if k else 10
-        self.basis_fn = (
-            basis_fn if basis_fn else Spline(s=None, order=4, k=self.k)
-        )
+        self.basis_fn = basis_fn if basis_fn else Spline(s=None, order=4, k=self.k)
 
         self.CLik = CLik
         self.SLik = SLik

@@ -1,13 +1,14 @@
+import json
+from collections import defaultdict
 from functools import partial
 from typing import Dict, List, Optional
+
 import jax
 import jax.numpy as jnp
-import json
 import numpy as np
 import pandas as pd
-from evofr.data import forecast_dates
-from evofr.data import DataSpec
-from collections import defaultdict
+
+from evofr.data import DataSpec, forecast_dates
 
 
 def get_quantile(samples: Dict, p, site):
@@ -47,9 +48,7 @@ def get_quantiles(samples: Dict, ps, site):
     return med, quants
 
 
-def get_site_by_variant(
-    samples: Dict, data: DataSpec, ps, name, site, forecast=False
-):
+def get_site_by_variant(samples: Dict, data: DataSpec, ps, name, site, forecast=False):
 
     # Unpack variant info
     var_names = data.var_names
@@ -97,9 +96,7 @@ def get_site_by_variant(
 
 
 def get_freq(samples: Dict, data: DataSpec, ps, name, forecast=False):
-    return get_site_by_variant(
-        samples, data, ps, name, "freq", forecast=forecast
-    )
+    return get_site_by_variant(samples, data, ps, name, "freq", forecast=forecast)
 
 
 def get_growth_advantage(samples, data, ps, name, rel_to=None):
@@ -201,9 +198,7 @@ def get_sites_quantiles_json(
 
         # Get ps
         for i, p in enumerate(ps):
-            q = jnp.array(
-                [0.5 * (1 - p), 0.5 * (1 + p)]
-            )  # Upper and lower bound
+            q = jnp.array([0.5 * (1 - p), 0.5 * (1 + p)])  # Upper and lower bound
             site_dict[f"HDI_{round(ps[i] * 100)}"] = jnp.quantile(
                 site_samples,
                 q=q,
@@ -259,15 +254,11 @@ def get_sites_variants_json(
             variant_dict = dict()
 
             # Get median
-            variant_dict["median"] = jnp.median(
-                site_samples[:, :, v, ...], axis=0
-            )
+            variant_dict["median"] = jnp.median(site_samples[:, :, v, ...], axis=0)
 
             # Get ps
             for i, p in enumerate(ps):
-                q = jnp.array(
-                    [0.5 * (1 - p), 0.5 * (1 + p)]
-                )  # Upper and lower bound
+                q = jnp.array([0.5 * (1 - p), 0.5 * (1 + p)])  # Upper and lower bound
 
                 # Get HDI Upper
                 variant_dict[f"HDI_{round(ps[i] * 100)}_upper"] = jnp.quantile(
@@ -332,9 +323,7 @@ def get_sites_variants_tidy(
             # Check size of dated forecasts to generate date map
             T = samples[site].shape[1]
             forecasted_dates = forecast_dates(data.dates, T)
-            forecast_date_map = {
-                d: i for (i, d) in enumerate(forecasted_dates)
-            }
+            forecast_date_map = {d: i for (i, d) in enumerate(forecasted_dates)}
             metadata["forecast_dates"] = forecasted_dates
 
             break
@@ -380,14 +369,10 @@ def get_sites_variants_tidy(
                     entry_upper = entry.copy()
 
                     # Add values from intervals
-                    entry_lower["value"] = np.around(
-                        quants[i][0, index, v], decimals=3
-                    )
+                    entry_lower["value"] = np.around(quants[i][0, index, v], decimals=3)
                     entry_lower["ps"] = f"HDI_{round(p * 100)}_lower"
 
-                    entry_upper["value"] = np.around(
-                        quants[i][1, index, v], decimals=3
-                    )
+                    entry_upper["value"] = np.around(quants[i][1, index, v], decimals=3)
                     entry_upper["ps"] = f"HDI_{round(p * 100)}_upper"
 
                     # Add upper and lower bounds
@@ -441,9 +426,7 @@ def get_sites_variants_tidy(
 
     entries = []
     for d, site, forecast in zip(dated, sites, forecasts):
-        tidy_site = (
-            partial(tidy_site_date, forecast=forecast) if d else tidy_site_flat
-        )
+        tidy_site = partial(tidy_site_date, forecast=forecast) if d else tidy_site_flat
         entries.extend(tidy_site(site))
 
     tidy_dict = {"metadata": metadata, "data": entries}

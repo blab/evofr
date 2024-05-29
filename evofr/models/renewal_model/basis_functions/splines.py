@@ -1,6 +1,8 @@
 from typing import Optional
-from jax import vmap, Array
+
 import jax.numpy as jnp
+from jax import Array, vmap
+
 from .basis_fns import BasisFunction
 
 

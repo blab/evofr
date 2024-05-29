@@ -1,22 +1,21 @@
 from abc import ABC, abstractmethod
+from functools import partial
 from typing import List, Optional
-from jax._src.nn.functions import softmax
-from jax import vmap
-import numpy as np
-import pandas as pd
 
-from evofr.data.data_spec import DataSpec
-from evofr.data.data_helpers import prep_dates, prep_sequence_counts
-from evofr.models.renewal_model.model_options import MultinomialSeq
-from .multinomial_logistic_regression import MultinomialLogisticRegression
 import jax.numpy as jnp
-
+import numpy as np
 import numpyro
 import numpyro.distributions as dist
+import pandas as pd
+from jax import vmap
+from jax._src.nn.functions import softmax
+
+from evofr.data.data_helpers import prep_dates, prep_sequence_counts
+from evofr.data.data_spec import DataSpec
+from evofr.models.renewal_model.model_options import MultinomialSeq
 
 from .model_spec import ModelSpec
-
-from functools import partial
+from .multinomial_logistic_regression import MultinomialLogisticRegression
 
 
 class DeltaPriorModel(ABC):
@@ -29,9 +28,7 @@ class DeltaPriorModel(ABC):
 
 
 class DeltaNormalPrior(DeltaPriorModel):
-    def __init__(
-        self, loc: Optional[float] = None, scale: Optional[float] = None
-    ):
+    def __init__(self, loc: Optional[float] = None, scale: Optional[float] = None):
         self.loc = loc
         self.scale = scale
 
@@ -76,9 +73,7 @@ class DeltaRegressionPrior(DeltaPriorModel):
 
     def model(self, N_variants):
         # Generate coefficients for features
-        theta = numpyro.sample(
-            "theta", dist.Normal(), sample_shape=(self.N_features,)
-        )
+        theta = numpyro.sample("theta", dist.Normal(), sample_shape=(self.N_features,))
 
         # Generate relative fitness where features present
         delta_loc_present = jnp.dot(self.features[~self.is_missing, :], theta)
@@ -97,9 +92,7 @@ class DeltaRegressionPrior(DeltaPriorModel):
 
         delta_scale = numpyro.sample("delta_scale", dist.HalfNormal(0.1))
 
-        raw_delta = numpyro.sample(
-            "raw_delta", dist.Normal(delta_loc, delta_scale)
-        )
+        raw_delta = numpyro.sample("raw_delta", dist.Normal(delta_loc, delta_scale))
         return raw_delta
 
     def predict(self, features, samples):
@@ -129,14 +122,14 @@ def MLR_innovation_model_time_varying(
 
     # Now we need to get the time varying growth advantages
     # Sampling time-varying innovations from prior model
-    raw_delta = delta_prior.model(N_variants) # (T, V)
-    pivot_delta = jnp.dot(raw_delta,  innovation_matrix[-1,:-1])
+    raw_delta = delta_prior.model(N_variants)  # (T, V)
+    pivot_delta = jnp.dot(raw_delta, innovation_matrix[-1, :-1])
     delta = numpyro.deterministic("delta", jnp.append(raw_delta, -pivot_delta))
 
     # Innovations to beta for growth advantages
     # (V, V) * (T, V) -> (T, V) # Gotta make sure shape right?
     mapped_dot = vmap(jnp.dot, in_axes=(None, 0), out_axes=0)
-    beta = numpyro.deterministic("beta",  mapped_dot(innovation_matrix, delta))
+    beta = numpyro.deterministic("beta", mapped_dot(innovation_matrix, delta))
 
     logits = alpha[:, None] + jnp.cumsum(beta, axis=0)
     numpyro.deterministic("freq", softmax(logits, axis=-1))
@@ -190,9 +183,7 @@ def MLR_innovation_model(
     # Innovations to beta for growth advantages
     raw_beta = jnp.dot(innovation_matrix, delta)
 
-    beta = numpyro.deterministic(
-        "beta", jnp.column_stack((raw_alpha, raw_beta)).T
-    )
+    beta = numpyro.deterministic("beta", jnp.column_stack((raw_alpha, raw_beta)).T)
 
     logits = jnp.dot(X, beta)  # Logit frequencies by variant
 
@@ -237,9 +228,7 @@ class InnovationMLR(ModelSpec):
         InnovationMLR
         """
         self.tau = tau  # Fixed generation time
-        self.delta_prior = (
-            DeltaNormalPrior() if delta_prior is None else delta_prior
-        )
+        self.delta_prior = DeltaNormalPrior() if delta_prior is None else delta_prior
         self.model_fn = partial(
             MLR_innovation_model, tau=self.tau, delta_prior=self.delta_prior
         )
@@ -280,14 +269,11 @@ def prep_clade_list(
     # First check:
     # SHould be able to reduce to a faster solve maybe?
     var_names = (
-        list(raw_variant_parents.variant.unique())
-        if var_names is None
-        else var_names
+        list(raw_variant_parents.variant.unique()) if var_names is None else var_names
     )
     innovation_matrix = np.zeros((len(var_names), len(var_names))).astype(int)
     parent_map = {
-        row["variant"]: row["parent"]
-        for _, row in raw_variant_parents.iterrows()
+        row["variant"]: row["parent"] for _, row in raw_variant_parents.iterrows()
     }
     for _, row in raw_variant_parents.iterrows():
         var = row["variant"]

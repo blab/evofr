@@ -1,19 +1,17 @@
 from functools import partial
 from typing import Optional
-import numpy as np
-from jax import vmap
-import jax.numpy as jnp
-from jax.nn import softmax
 
+import jax.numpy as jnp
+import numpy as np
 import numpyro
 import numpyro.distributions as dist
+from jax import vmap
+from jax.nn import softmax
 from numpyro.infer.reparam import TransformReparam
 
 from .model_spec import ModelSpec
-from .multinomial_logistic_regression import (
-    MultinomialLogisticRegression,
-    simulate_MLR,
-)
+from .multinomial_logistic_regression import (MultinomialLogisticRegression,
+                                              simulate_MLR)
 
 
 def simulate_hier_mlr(growth_advantages, freq0, tau, Ns):
@@ -54,7 +52,7 @@ def hier_MLR_numpyro(
             ),
         )
         with numpyro.plate("variants", N_variants - 1, dim=-2):
-        # Define loc and scale for fitness beta
+            # Define loc and scale for fitness beta
             beta_loc = numpyro.sample(
                 "beta_loc",
                 dist.TransformedDistribution(
@@ -109,9 +107,7 @@ def hier_MLR_numpyro(
     )
 
     # Re-ordering so groups are last
-    seq_counts = numpyro.deterministic(
-        "seq_counts", jnp.swapaxes(_seq_counts, 2, 1)
-    )
+    seq_counts = numpyro.deterministic("seq_counts", jnp.swapaxes(_seq_counts, 2, 1))
 
     # Compute frequency
     numpyro.deterministic("freq", softmax(logits, axis=1))

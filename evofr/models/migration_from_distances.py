@@ -1,11 +1,12 @@
 from typing import Optional
-import numpy as np
-from evofr.data.data_spec import DataSpec
-import jax.numpy as jnp
-from jax.nn import softmax, logsumexp
 
+import jax.numpy as jnp
+import numpy as np
 import numpyro
 import numpyro.distributions as dist
+from jax.nn import logsumexp, softmax
+
+from evofr.data.data_spec import DataSpec
 
 from .model_spec import ModelSpec
 
@@ -15,22 +16,20 @@ def mut_dist_mig_ll(
 ):
     # Compute mixture probability
     # Probability of distance assuming descendent
-    #log_prob_dist = dist.Poisson(mu * deltaT).log_prob(distances)
+    # log_prob_dist = dist.Poisson(mu * deltaT).log_prob(distances)
 
     # Model probabiltiy of descendent with softmax on distnace
-    #sample_identity = softmax(-distances * alpha, axis=0)
+    # sample_identity = softmax(-distances * alpha, axis=0)
 
     ## Weight by probability of parentage "sample_identity"
-    #log_prob = log_prob_dist + jnp.log(sample_identity)
-    #numpyro.factor(f"distance_{t}", logsumexp(log_prob, axis=0).sum())
+    # log_prob = log_prob_dist + jnp.log(sample_identity)
+    # numpyro.factor(f"distance_{t}", logsumexp(log_prob, axis=0).sum())
     log_prob_dist = dist.Poisson(mu * deltaT).log_prob(distances)
     sample_identity = softmax(log_prob_dist, axis=0)
 
     # Use sample locations to generate rates between regions
     # Map samples to locations
-    location_mat = (
-        np.arange(n_locations) == locations[:, None]
-    )  # (S_now, n_locations)
+    location_mat = np.arange(n_locations) == locations[:, None]  # (S_now, n_locations)
     location_mat_next = (
         np.arange(n_locations) == locations_next[:, None]
     )  # (S_next, n_locations)
@@ -94,7 +93,7 @@ def migration_distance_numpyro(
     if alpha is None:
         alpha = numpyro.sample("alpha", dist.Exponential(0.1))
 
-    migs = jnp.empty((G-1, n_locations, n_locations))
+    migs = jnp.empty((G - 1, n_locations, n_locations))
     for g in range(G - 1):
         # Get distances and compute probability of belonging
         _, _, mig = mut_dist_mig_ll(

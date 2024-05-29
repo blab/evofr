@@ -1,20 +1,19 @@
 from functools import partial
 from typing import Optional
-from jax._src.interpreters.batching import Array
-import numpy as np
-from jax import vmap
-import jax.numpy as jnp
-from jax.nn import softmax
 
+import jax.numpy as jnp
+import numpy as np
 import numpyro
 import numpyro.distributions as dist
+from jax import vmap
+from jax._src.interpreters.batching import Array
+from jax.nn import softmax
 from numpyro.infer.reparam import TransformReparam
 
+from evofr.models.renewal_model.basis_functions.splines import (Spline,
+                                                                SplineDeriv)
+
 from .model_spec import ModelSpec
-from evofr.models.renewal_model.basis_functions.splines import (
-    Spline,
-    SplineDeriv,
-)
 
 
 def hier_MLR_time_numpyro(
@@ -69,9 +68,7 @@ def hier_MLR_time_numpyro(
                         "raw_beta",
                         dist.TransformedDistribution(
                             dist.Normal(0.0, 1.0),
-                            dist.transforms.AffineTransform(
-                                beta_loc, beta_scale
-                            ),
+                            dist.transforms.AffineTransform(beta_loc, beta_scale),
                         ),
                     )
 
@@ -103,9 +100,7 @@ def hier_MLR_time_numpyro(
     )
 
     # Re-ordering so groups are last
-    seq_counts = numpyro.deterministic(
-        "seq_counts", jnp.swapaxes(_seq_counts, 2, 1)
-    )
+    seq_counts = numpyro.deterministic("seq_counts", jnp.swapaxes(_seq_counts, 2, 1))
 
     # Compute frequency
     numpyro.deterministic("freq", softmax(logits, axis=1))
@@ -118,9 +113,7 @@ def hier_MLR_time_numpyro(
         numpyro.deterministic(
             "ga", jnp.exp(delta * tau)
         )  # Last row corresponds to linear predictor / growth advantage
-        delta_loc = jnp.einsum(
-            "tf, fv -> tv", X_deriv[:, :, 0], beta_loc[:, :, 0]
-        )
+        delta_loc = jnp.einsum("tf, fv -> tv", X_deriv[:, :, 0], beta_loc[:, :, 0])
         numpyro.deterministic("ga_loc", jnp.exp(delta_loc * tau))
 
     return None
@@ -168,9 +161,7 @@ class HierMLRTime(ModelSpec):
         self.basis_fn = Spline(s=self.s, order=self.order, k=self.k)
         self.basis_fn_deriv = SplineDeriv(s=self.s, order=self.order, k=self.k)
 
-        self.model_fn = partial(
-            hier_MLR_time_numpyro, pool_scale=self.pool_scale
-        )
+        self.model_fn = partial(hier_MLR_time_numpyro, pool_scale=self.pool_scale)
 
     @staticmethod
     def expand_features(X, n_groups):
@@ -192,7 +183,9 @@ class HierMLRTime(ModelSpec):
             self.basis_fn_deriv.make_features(data), G
         )
 
-    def forecast_frequencies(self, samples, forecast_L, tau=None, linear=False, mean_len=7):
+    def forecast_frequencies(
+        self, samples, forecast_L, tau=None, linear=False, mean_len=7
+    ):
         """
         Use posterior beta to forecast posterior frequencies.
         """
@@ -211,17 +204,15 @@ class HierMLRTime(ModelSpec):
 
         # Extrapolate based on linear approximate delta_pred
         if linear:
-            forecast_times = jnp.arange(0., forecast_L) + 1
-        else: # Keep delta_pred constant
+            forecast_times = jnp.arange(0.0, forecast_L) + 1
+        else:  # Keep delta_pred constant
             forecast_times = jnp.ones(forecast_L)
-        delta_pred = (
-            delta_pred[:, None, :, :] * forecast_times[None, :, None, None]
-        )
+        delta_pred = delta_pred[:, None, :, :] * forecast_times[None, :, None, None]
 
         # Creating frequencies from posterior beta
         logits = jnp.log(samples["freq"])[:, -1, :, :]
-        logits = (
-            logits[:, None, :, :] + jnp.cumsum(delta_pred, axis=1)
+        logits = logits[:, None, :, :] + jnp.cumsum(
+            delta_pred, axis=1
         )  # Project based on delta_pred: adding cummulatively in time
         samples["freq_forecast"] = softmax(logits, axis=-2)  # (S, T, V, G)
         if tau is None:

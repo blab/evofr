@@ -1,10 +1,12 @@
-from .data_helpers import prep_dates, format_var_names
-from .data_spec import DataSpec
-from .case_counts import CaseCounts
-from .variant_frequencies import VariantFrequencies
+from typing import List, Optional
+
 import numpy as np
 import pandas as pd
-from typing import List, Optional
+
+from .case_counts import CaseCounts
+from .data_helpers import format_var_names, prep_dates
+from .data_spec import DataSpec
+from .variant_frequencies import VariantFrequencies
 
 
 class CaseFrequencyData(DataSpec):
@@ -55,9 +57,7 @@ class CaseFrequencyData(DataSpec):
         self.cases = case_data.cases
 
         # Get sequence data with VariantFrequencies
-        freq_data = VariantFrequencies(
-            raw_seq, self.date_to_index, var_names, pivot
-        )
+        freq_data = VariantFrequencies(raw_seq, self.date_to_index, var_names, pivot)
         self.seq_counts = freq_data.seq_counts
         self.var_names = freq_data.var_names
         self.pivot = self.var_names[-1]
@@ -137,8 +137,6 @@ class HierarchicalCFData:
             [g.seq_counts for g in self.groups],
             axis=-1,
         )
-        data["N"] = np.stack(
-            [g.seq_counts.sum(axis=-1) for g in self.groups], axis=-1
-        )
+        data["N"] = np.stack([g.seq_counts.sum(axis=-1) for g in self.groups], axis=-1)
         data["var_names"] = self.var_names
         return data

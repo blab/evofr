@@ -1,11 +1,14 @@
 from functools import partial
-from evofr.models.renewal_model.model_options import MultinomialSeq
-from .model_spec import ModelSpec
+
+import jax.numpy as jnp
+import numpy as np
 import numpyro
 import numpyro.distributions as dist
-import numpy as np
-import jax.numpy as jnp
 from jax import jit, lax
+
+from evofr.models.renewal_model.model_options import MultinomialSeq
+
+from .model_spec import ModelSpec
 
 
 def compute_frequency_piantham(ga, q0, gen_rev, T):
@@ -47,15 +50,11 @@ def compute_frequency_piantham(ga, q0, gen_rev, T):
     return jnp.vstack((q0, jnp.squeeze(q)))
 
 
-def Piantham_model_numpyro(
-    seq_counts, N, gen_rev, SeqLik, forecast_L, pred=False
-):
+def Piantham_model_numpyro(seq_counts, N, gen_rev, SeqLik, forecast_L, pred=False):
     T, N_variants = seq_counts.shape
 
     # Intial frequency
-    q0 = numpyro.sample(
-        "q0", dist.Dirichlet(jnp.ones(N_variants) / N_variants)
-    )
+    q0 = numpyro.sample("q0", dist.Dirichlet(jnp.ones(N_variants) / N_variants))
 
     # Growth advantages
     with numpyro.plate("growth_advantage", N_variants - 1):
@@ -64,9 +63,7 @@ def Piantham_model_numpyro(
     _T = T + forecast_L if pred else T
     _freq = compute_frequency_piantham(ga, q0, gen_rev, _T)
 
-    freq = numpyro.deterministic(
-        "freq", jnp.take(_freq, jnp.arange(T), axis=0)
-    )
+    freq = numpyro.deterministic("freq", jnp.take(_freq, jnp.arange(T), axis=0))
     numpyro.deterministic("s", ga - 1)
 
     # Compute likelihood of frequency

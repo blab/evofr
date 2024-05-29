@@ -372,8 +372,7 @@ class PatchLegend:
             else:
                 return None
         patches = [
-            Patch(color=color, label=label)
-            for label, color in self.color_map.items()
+            Patch(color=color, label=label) for label, color in self.color_map.items()
         ]
 
         ncol = len(self.color_map.keys()) if self.ncol is None else self.ncol

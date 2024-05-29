@@ -1,7 +1,9 @@
 from typing import Optional
-from jax import vmap, Array
+
 import jax.numpy as jnp
+from jax import Array, vmap
 from jax.scipy.special import gammaln
+
 from .basis_fns import BasisFunction
 
 
@@ -25,9 +27,7 @@ class HSGaussianProcess(BasisFunction):
 
     @staticmethod
     def phi_matrix(L: float, m: int, x: float):
-        phi_mapped = vmap(
-            HSGaussianProcess.phi, in_axes=(None, 0, None), out_axes=-1
-        )
+        phi_mapped = vmap(HSGaussianProcess.phi, in_axes=(None, 0, None), out_axes=-1)
         return phi_mapped(L, m, x)
 
 

@@ -1,11 +1,13 @@
 from typing import Optional, Type
 
-from evofr.data.data_spec import DataSpec
-from evofr.models.model_spec import ModelSpec
-from .MCMC_handler import MCMCHandler
-from evofr.posterior.posterior_handler import PosteriorHandler
 from numpyro.infer import NUTS
 from numpyro.infer.mcmc import MCMCKernel
+
+from evofr.data.data_spec import DataSpec
+from evofr.models.model_spec import ModelSpec
+from evofr.posterior.posterior_handler import PosteriorHandler
+
+from .MCMC_handler import MCMCHandler
 
 
 class InferMCMC:
@@ -62,9 +64,7 @@ class InferMCMC:
         model.augment_data(input)
 
         # Fit model and retrieve samples
-        self.handler.fit(
-            model.model_fn, input, self.num_warmup, self.num_samples
-        )
+        self.handler.fit(model.model_fn, input, self.num_warmup, self.num_samples)
         samples = self.handler.predict(model.model_fn, input)
 
         # Create object to hold posterior samples and data

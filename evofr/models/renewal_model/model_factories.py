@@ -1,10 +1,11 @@
 import jax.numpy as jnp
 import numpy as np
-from jax import jit, vmap
 import numpyro
 import numpyro.distributions as dist
+from jax import jit, vmap
+
 from .model_functions import forward_simulate_I, reporting_to_vec
-from .model_options import GARW, NegBinomCases, DirMultinomialSeq
+from .model_options import GARW, DirMultinomialSeq, NegBinomCases
 
 
 def _renewal_model(
@@ -56,9 +57,7 @@ def _renewal_model(
     obs_range = jnp.arange(seed_L, seed_L + T, 1)
 
     # Computing first introduction dates
-    first_obs = (np.ma.masked_invalid(np.array(seq_counts)) != 0).argmax(
-        axis=0
-    )
+    first_obs = (np.ma.masked_invalid(np.array(seq_counts)) != 0).argmax(axis=0)
     intro_dates = np.concatenate([first_obs + d for d in np.arange(0, seed_L)])
     # intro_idx = (first_obs, np.arange(N_variant)) # Single introduction
     intro_idx = (
@@ -66,9 +65,7 @@ def _renewal_model(
         np.tile(np.arange(N_variant), seed_L),
     )  # Multiple introductions
 
-    _R = RLik.model(
-        N_variant, X
-    )  # likelihood on effective reproduction number
+    _R = RLik.model(N_variant, X)  # likelihood on effective reproduction number
 
     # Add forecasted R
     if forecast_L > 0:
@@ -132,9 +129,7 @@ def _renewal_model(
 
     SeqLik.model(seq_counts, N, freq, pred)  # Evaluate frequency likelihood
 
-    numpyro.deterministic(
-        "R_ave", (_R * freq).sum(axis=1)
-    )  # Getting average R
+    numpyro.deterministic("R_ave", (_R * freq).sum(axis=1))  # Getting average R
 
     if forecast_L > 0:
         numpyro.deterministic("freq_forecast", _freq[(seed_L + T) :, :])
@@ -159,9 +154,7 @@ def _spline_incidence_model_factory(
     if SeqLik is None:
         SeqLik = DirMultinomialSeq()
 
-    def _variant_model(
-        cases, seq_counts, N, X, X_prime, var_names=None, pred=False
-    ):
+    def _variant_model(cases, seq_counts, N, X, X_prime, var_names=None, pred=False):
         _, N_variant = seq_counts.shape
         T, k = X.shape
 

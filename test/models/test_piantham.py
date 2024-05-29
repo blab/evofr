@@ -1,5 +1,5 @@
-from evofr.models import PianthamModel
 from evofr import discretise_gamma
+from evofr.models import PianthamModel
 
 
 def test_init():

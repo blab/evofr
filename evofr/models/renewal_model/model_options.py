@@ -35,9 +35,7 @@ class FixedGA:
         beta_0 = numpyro.sample("beta_0", dist.Normal(0.0, 1.0))
         with numpyro.plate("N_steps_base", k - 1):
             beta_rw_step = numpyro.sample("beta_rw_step", dist.Laplace()) * gam
-            beta_rw = numpyro.deterministic(
-                "beta_rw", jnp.cumsum(beta_rw_step)
-            )
+            beta_rw = numpyro.deterministic("beta_rw", jnp.cumsum(beta_rw_step))
 
         # Combine increments and starting position
         beta_rw = jnp.append(jnp.zeros(1), beta_rw)
@@ -47,9 +45,7 @@ class FixedGA:
         with numpyro.plate("N_variant_m1", N_variant - 1):
             v = numpyro.sample("v", dist.Normal(0.0, 0.5))
 
-        numpyro.deterministic(
-            "ga", jnp.exp(v)
-        )  # Transform to growth advantage
+        numpyro.deterministic("ga", jnp.exp(v))  # Transform to growth advantage
 
         # Computing R
         R = numpyro.deterministic(
@@ -75,9 +71,7 @@ class FreeGrowth:
             gam = numpyro.sample("gam", self.scale_prior) * self.gam_prior
             beta_0 = numpyro.sample("beta_0", dist.Normal(0.0, 0.5))
             with numpyro.plate("N_steps_base", k - 1):
-                beta_rw_step = (
-                    numpyro.sample("beta_rw_step", dist.Laplace()) * gam
-                )
+                beta_rw_step = numpyro.sample("beta_rw_step", dist.Laplace()) * gam
                 beta_rw = numpyro.deterministic(
                     "beta_rw", jnp.cumsum(beta_rw_step, axis=0)
                 )
@@ -91,9 +85,7 @@ class FreeGrowth:
 
 
 class GARW:
-    def __init__(
-        self, gam_prior=0.5, gam_delta_prior=0.5, prior_family="Cauchy"
-    ):
+    def __init__(self, gam_prior=0.5, gam_delta_prior=0.5, prior_family="Cauchy"):
         """Construct GARW model.
         Parameters
         ----------
@@ -130,9 +122,7 @@ class GARW:
         # )
         with numpyro.plate("N_steps_base", k - 1):
             beta_rw_step = numpyro.sample("beta_rw_step", dist.Laplace()) * gam
-            beta_rw = numpyro.deterministic(
-                "beta_rw", jnp.cumsum(beta_rw_step)
-            )
+            beta_rw = numpyro.deterministic("beta_rw", jnp.cumsum(beta_rw_step))
 
         # Combine increments and starting position
         beta_rw = jnp.append(jnp.zeros(1), beta_rw)
@@ -143,8 +133,7 @@ class GARW:
         with numpyro.plate("N_variant_m1", N_variant - 1):
             delta_0 = numpyro.sample("delta_0", dist.Normal(0.0, 1.0)) * 0.2
             gam_delta = (
-                numpyro.sample("gam_delta", self.scale_prior)
-                * self.gam_delta_prior
+                numpyro.sample("gam_delta", self.scale_prior) * self.gam_delta_prior
             )
             # delta_rw = numpyro.sample(
             #     "delta_rw", LaplaceRandomWalk(scale=gam_delta, num_steps=k - 1)
@@ -185,9 +174,7 @@ class GAPRW:
         beta_0 = numpyro.sample("beta_0", dist.Normal(0.0, 1.0))
         with numpyro.plate("N_steps_base", T - 1):
             beta_rw_step = numpyro.sample("beta_rw_step", dist.Laplace()) * gam
-            beta_rw = numpyro.deterministic(
-                "beta_rw", jnp.cumsum(beta_rw_step)
-            )
+            beta_rw = numpyro.deterministic("beta_rw", jnp.cumsum(beta_rw_step))
 
         # Combine increments and starting position
         beta_rw = jnp.append(jnp.zeros(1), beta_rw)
@@ -262,9 +249,7 @@ class ZIPoisCases:
         gate = jnp.zeros_like(cases) if pred else gate
         obs = None if pred else np.nan_to_num(cases)
 
-        numpyro.sample(
-            "cases", dist.ZeroInflatedPoisson(rate=EC, gate=gate), obs=obs
-        )
+        numpyro.sample("cases", dist.ZeroInflatedPoisson(rate=EC, gate=gate), obs=obs)
 
 
 class NegBinomCases:
@@ -273,9 +258,7 @@ class NegBinomCases:
 
     def model(self, cases, EC, pred=False):
         # NegativeBinomial sampling
-        raw_alpha = numpyro.sample(
-            "raw_alpha", dist.HalfNormal(self.raw_alpha_sd)
-        )
+        raw_alpha = numpyro.sample("raw_alpha", dist.HalfNormal(self.raw_alpha_sd))
         is_obs = is_obs_idx(cases)  # Find unobserved case counts
 
         # Overwrite defaults for predictive checks
@@ -297,9 +280,7 @@ class ZINegBinomCases:
 
     def model(self, cases, EC, pred=False):
         # NegativeBinomial sampling
-        raw_alpha = (
-            numpyro.sample("raw_alpha", dist.HalfNormal()) * self.raw_alpha_sd
-        )
+        raw_alpha = numpyro.sample("raw_alpha", dist.HalfNormal()) * self.raw_alpha_sd
 
         # Finding zero locations and making only parameters for zero observation
         is_zero = cases == 0

@@ -1,21 +1,20 @@
 from abc import ABC, abstractmethod
+from functools import partial
 from typing import Callable, List, Optional
-import numpy as np
-import pandas as pd
 
-from evofr.data.data_spec import DataSpec
-from evofr.data.data_helpers import prep_dates, format_var_names
-from evofr.models.renewal_model.model_options import MultinomialSeq
-from .multinomial_logistic_regression import MultinomialLogisticRegression
 import jax.numpy as jnp
-from jax.nn import softmax
-
+import numpy as np
 import numpyro
 import numpyro.distributions as dist
+import pandas as pd
+from jax.nn import softmax
+
+from evofr.data.data_helpers import format_var_names, prep_dates
+from evofr.data.data_spec import DataSpec
+from evofr.models.renewal_model.model_options import MultinomialSeq
 
 from .model_spec import ModelSpec
-
-from functools import partial
+from .multinomial_logistic_regression import MultinomialLogisticRegression
 from .renewal_model import Spline
 
 
@@ -93,13 +92,9 @@ class LogitSplineHazard(HazardModel):
 
         # gammma_scale = numpyro.sample("gamma_scale", dist.HalfNormal(0.1))
         with numpyro.plate("basis_function", k):
-            gamma_loc = (
-                numpyro.sample("gamma_loc", dist.Normal(0.0, 1.0)) * 5.0
-            )
+            gamma_loc = numpyro.sample("gamma_loc", dist.Normal(0.0, 1.0)) * 5.0
             with numpyro.plate("variant", N_variants):
-                gamma = numpyro.sample(
-                    "gamma", dist.Normal(gamma_loc, self.pool_scale)
-                )
+                gamma = numpyro.sample("gamma", dist.Normal(gamma_loc, self.pool_scale))
 
         logit_h = numpyro.deterministic("logit_h", jnp.dot(U, gamma.T))
         _h = jnp.exp(logit_h) / (1 + jnp.exp(logit_h))
@@ -127,12 +122,8 @@ def estimate_delay(seq_count_delays, hazard_model):
 
     # Get delay distribution
     p_delay, cdf_delay = discrete_hazard_to_pmf_cdf(h)
-    p_delay = numpyro.deterministic(
-        "p_delay", jnp.clip(p_delay, 1e-12, 1 - 1e-12).T
-    )
-    cdf_delay = numpyro.deterministic(
-        "cdf_delay", jnp.clip(cdf_delay, 1e-12, 1).T
-    )
+    p_delay = numpyro.deterministic("p_delay", jnp.clip(p_delay, 1e-12, 1 - 1e-12).T)
+    cdf_delay = numpyro.deterministic("cdf_delay", jnp.clip(cdf_delay, 1e-12, 1).T)
 
     # Evaluate likelihood of delays
     numpyro.sample(
@@ -237,9 +228,7 @@ class MLRNowcast(ModelSpec):
         MLRNowcast
         """
         self.tau = tau  # Fixed generation time
-        self.hazard_model = (
-            LinearHazard if hazard_model is None else hazard_model
-        )
+        self.hazard_model = LinearHazard if hazard_model is None else hazard_model
         self.SeqLik = MultinomialSeq() if SeqLik is None else SeqLik
         self.model_fn = partial(
             MLR_nowcast_model,
@@ -260,7 +249,7 @@ def prep_sequence_counts_delay(
     date_to_index: Optional[dict] = None,
     var_names: Optional[List] = None,
     max_delay: Optional[int] = None,
-    pivot: Optional[str] = None
+    pivot: Optional[str] = None,
 ):
     """Process 'raw_seq' data to nd.array including unobserved dates.
 
@@ -331,7 +320,7 @@ class DelaySequenceCounts(DataSpec):
         date_to_index: Optional[dict] = None,
         var_names: Optional[List] = None,
         max_delay: Optional[int] = None,
-        pivot: Optional[str] = None
+        pivot: Optional[str] = None,
     ):
         """Construct a data specification for handling variant frequencies.
 

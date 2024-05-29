@@ -1,8 +1,9 @@
 import datetime
+import warnings
+from typing import List, Optional
+
 import numpy as np
 import pandas as pd
-from typing import List, Optional
-import warnings
 
 
 def prep_dates(raw_dates: pd.Series):
@@ -86,9 +87,7 @@ def format_var_names(raw_names: List[str], pivot: Optional[str] = None):
         names.remove(pivot)  # Removes first instance of pivot
         return names
     else:
-        warnings.warn(
-            f"{pivot} not present in variant names. Using provided order."
-        )
+        warnings.warn(f"{pivot} not present in variant names. Using provided order.")
     # Otherwise, return the original names
     return raw_names
 

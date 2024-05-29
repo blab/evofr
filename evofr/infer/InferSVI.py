@@ -1,13 +1,16 @@
 from typing import Optional, Type
+
+import jax.numpy as jnp
+from numpyro.infer import init_to_value
+from numpyro.infer.autoguide import (AutoDelta, AutoGuide,
+                                     AutoMultivariateNormal)
+from numpyro.optim import Adam
+
 from evofr.data.data_spec import DataSpec
 from evofr.models.model_spec import ModelSpec
 from evofr.posterior.posterior_handler import PosteriorHandler
-import jax.numpy as jnp
+
 from .SVI_handler import SVIHandler
-from numpyro.infer import init_to_value
-from numpyro.optim import Adam
-from numpyro.infer.autoguide import AutoGuide
-from numpyro.infer.autoguide import AutoDelta, AutoMultivariateNormal
 
 
 class InferSVI:

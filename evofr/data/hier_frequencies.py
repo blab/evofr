@@ -1,9 +1,11 @@
-from .variant_frequencies import VariantFrequencies
-from .data_helpers import prep_dates, format_var_names
-from .data_spec import DataSpec
+from typing import Optional
+
 import numpy as np
 import pandas as pd
-from typing import Optional
+
+from .data_helpers import format_var_names, prep_dates
+from .data_spec import DataSpec
+from .variant_frequencies import VariantFrequencies
 
 
 class HierFrequencies(DataSpec):
@@ -57,18 +59,12 @@ class HierFrequencies(DataSpec):
             for _, group in grouped
         ]
 
-        self.seq_counts = np.stack(
-            [g.seq_counts for g in self.groups], axis=-1
-        )
+        self.seq_counts = np.stack([g.seq_counts for g in self.groups], axis=-1)
 
     def make_data_dict(self, data: Optional[dict] = None) -> dict:
         if data is None:
             data = dict()
-        data["seq_counts"] = np.stack(
-            [g.seq_counts for g in self.groups], axis=-1
-        )
-        data["N"] = np.stack(
-            [g.seq_counts.sum(axis=-1) for g in self.groups], axis=-1
-        )
+        data["seq_counts"] = np.stack([g.seq_counts for g in self.groups], axis=-1)
+        data["N"] = np.stack([g.seq_counts.sum(axis=-1) for g in self.groups], axis=-1)
         data["var_names"] = self.var_names
         return data

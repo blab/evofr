@@ -1,9 +1,11 @@
+from typing import Optional
+
+import numpy as np
+import pandas as pd
+
 from .case_counts import CaseCounts
 from .data_helpers import prep_dates
 from .data_spec import DataSpec
-import numpy as np
-import pandas as pd
-from typing import Optional
 
 
 class HierCases(DataSpec):
@@ -38,9 +40,7 @@ class HierCases(DataSpec):
         # Loop each group
         grouped = raw_cases.groupby(group)
         self.names = [name for name, _ in grouped]
-        self.groups = [
-            CaseCounts(group, self.date_to_index) for _, group in grouped
-        ]
+        self.groups = [CaseCounts(group, self.date_to_index) for _, group in grouped]
 
     def make_data_dict(self, data: Optional[dict] = None) -> dict:
         if data is None:

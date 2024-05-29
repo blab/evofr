@@ -1,9 +1,10 @@
 from typing import Optional
 
 from jax import random
+
 from evofr.data.data_spec import DataSpec
-from evofr.infer.InferBlackJax import BlackJaxNumpyro
 from evofr.infer.backends import Backend
+from evofr.infer.InferBlackJax import BlackJaxNumpyro
 from evofr.models.model_spec import ModelSpec
 from evofr.posterior.posterior_handler import PosteriorHandler
 

@@ -1,13 +1,13 @@
-from .data_helpers import prep_dates, prep_cases
-from .data_spec import DataSpec
-import pandas as pd
 from typing import Optional
+
+import pandas as pd
+
+from .data_helpers import prep_cases, prep_dates
+from .data_spec import DataSpec
 
 
 class CaseCounts(DataSpec):
-    def __init__(
-        self, raw_cases: pd.DataFrame, date_to_index: Optional[dict] = None
-    ):
+    def __init__(self, raw_cases: pd.DataFrame, date_to_index: Optional[dict] = None):
         """Construct a data specification for handling case counts.
 
         Parameters

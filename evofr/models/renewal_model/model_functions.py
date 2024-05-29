@@ -1,6 +1,7 @@
 from functools import partial
-from jax import lax, jit, vmap
+
 import jax.numpy as jnp
+from jax import jit, lax, vmap
 
 
 @partial(jit, static_argnums=3)

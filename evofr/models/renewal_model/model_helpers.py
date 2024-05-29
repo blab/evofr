@@ -1,4 +1,3 @@
-
 import jax.numpy as jnp
 import numpy as np
 from scipy.stats import gamma, lognorm
@@ -38,8 +37,10 @@ def get_standard_delays():
     delays = pad_delays(delays)
     return gen, delays
 
+
 def to_survivor_function(delay):
-    return 1. - jnp.cumsum(delay)
+    return 1.0 - jnp.cumsum(delay)
+
 
 def is_obs_idx(v):
     return jnp.where(jnp.isnan(v), jnp.zeros_like(v), jnp.ones_like(v))

@@ -1,17 +1,14 @@
-from jax import random
-import jax.numpy as jnp
-
-from numpyro.infer import NUTS, MCMC, Predictive
-from numpyro.infer.mcmc import MCMCKernel
 from typing import Callable, Dict, Optional, Type
+
+import jax.numpy as jnp
+from jax import random
+from numpyro.infer import MCMC, NUTS, Predictive
+from numpyro.infer.mcmc import MCMCKernel
 
 
 class MCMCHandler:
     def __init__(
-        self,
-        rng_key=1,
-        kernel: Optional[Type[MCMCKernel]] = None,
-        **kernel_kwargs
+        self, rng_key=1, kernel: Optional[Type[MCMCKernel]] = None, **kernel_kwargs
     ):
         """
         Construct MCMC handler.

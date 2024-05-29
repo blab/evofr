@@ -1,19 +1,18 @@
+from functools import partial
 from typing import List, Optional
-import numpy as np
-import pandas as pd
 
-from evofr.data.data_spec import DataSpec
-from evofr.data.data_helpers import prep_dates, prep_sequence_counts
-from evofr.models.renewal_model.model_options import MultinomialSeq
-from .multinomial_logistic_regression import MultinomialLogisticRegression
 import jax.numpy as jnp
-
+import numpy as np
 import numpyro
 import numpyro.distributions as dist
+import pandas as pd
+
+from evofr.data.data_helpers import prep_dates, prep_sequence_counts
+from evofr.data.data_spec import DataSpec
+from evofr.models.renewal_model.model_options import MultinomialSeq
 
 from .model_spec import ModelSpec
-
-from functools import partial
+from .multinomial_logistic_regression import MultinomialLogisticRegression
 
 
 def mutational_fitness_model(

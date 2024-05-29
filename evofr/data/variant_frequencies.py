@@ -1,7 +1,9 @@
+from typing import List, Optional
+
+import pandas as pd
+
 from .data_helpers import prep_dates, prep_sequence_counts
 from .data_spec import DataSpec
-import pandas as pd
-from typing import List, Optional
 
 VARIANT_NAMES = ["Variant", "other"]
 START_DATE = pd.to_datetime("2022-01-01")

@@ -1,8 +1,10 @@
 from functools import partial
 from typing import List, Optional
+
 import jax.numpy as jnp
 
 from evofr.models.model_spec import ModelSpec
+
 from .basis_functions import BasisFunction, Spline
 from .model_factories import _renewal_model
 
@@ -29,9 +31,7 @@ class RenewalModel(ModelSpec):
 
         # Making basis expansion for Rt
         self.k = k if k else 10
-        self.basis_fn = (
-            basis_fn if basis_fn else Spline(s=None, order=4, k=self.k)
-        )
+        self.basis_fn = basis_fn if basis_fn else Spline(s=None, order=4, k=self.k)
 
         # Defining model likelihoods
         self.RLik = RLik

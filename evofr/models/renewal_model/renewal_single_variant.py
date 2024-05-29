@@ -1,17 +1,17 @@
-from typing import Optional
 from functools import partial
+from typing import Optional
+
 import jax.numpy as jnp
 import numpy as np
+import numpyro
+import numpyro.distributions as dist
 
 from evofr.models.model_spec import ModelSpec
 from evofr.models.renewal_model.model_helpers import to_survivor_function
-from .basis_functions import BasisFunction, Spline
 
+from .basis_functions import BasisFunction, Spline
 from .model_functions import forward_simulate_I_and_prev, reporting_to_vec
 from .model_options import NegBinomCases
-
-import numpyro
-import numpyro.distributions as dist
 
 
 def _single_renewal_model(
@@ -78,9 +78,7 @@ def _single_renewal_model(
     numpyro.deterministic(
         "I_smooth", jnp.mean(rho_vec) * jnp.take(I_prev, obs_range, axis=0)
     )
-    numpyro.deterministic(
-        "prev", jnp.mean(rho_vec) * jnp.take(prev, obs_range, axis=0)
-    )
+    numpyro.deterministic("prev", jnp.mean(rho_vec) * jnp.take(prev, obs_range, axis=0))
 
     # Compute growth rate assuming I_{t+1} = I_{t} \exp(r_{t})
     numpyro.deterministic(
@@ -139,9 +137,7 @@ class SingleRenewalModel(ModelSpec):
 
         # Making basis expansion for Rt
         self.k = k if k else 10
-        self.basis_fn = (
-            basis_fn if basis_fn else Spline(s=None, order=4, k=self.k)
-        )
+        self.basis_fn = basis_fn if basis_fn else Spline(s=None, order=4, k=self.k)
 
         # Defining model likelihoods
         self.day_of_week_effect = day_of_week_effect

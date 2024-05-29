@@ -1,10 +1,9 @@
 from typing import Callable, Dict, Optional
 
+import blackjax
 import jax
 from jax import random
 from numpyro.infer.util import Predictive, initialize_model
-
-import blackjax
 
 from evofr.data.data_spec import DataSpec
 from evofr.infer.backends import Backend
@@ -24,15 +23,12 @@ class BlackJaxNumpyro:
         def logdensity_fn(position):
             return -potential_fn_gen(**data)(position)
 
-        model.postprocess_fn = jax.jit(
-            jax.vmap(postprocess_fn(**data), in_axes=0)
-        )
+        model.postprocess_fn = jax.jit(jax.vmap(postprocess_fn(**data), in_axes=0))
 
         # Define initial position
         if hasattr(model, "initial_position"):
             initial_position = {
-                site: model.initial_position[site]
-                for site in init_parms.z.keys()
+                site: model.initial_position[site] for site in init_parms.z.keys()
             }
             # initial_position = model.initial_position
         else:
@@ -151,15 +147,10 @@ class BlackJaxHandler:
             return BlackJaxNumpyro.predict(key, model, data, samples)
         return dict()
 
-    def run_warmup(
-        self, initial_position, logdensity_fn: Callable, num_warmup: int
-    ):
+    def run_warmup(self, initial_position, logdensity_fn: Callable, num_warmup: int):
         num_warmup = 1 if num_warmup < 1 else num_warmup
         adapt = blackjax.window_adaptation(
-            self.kernel_fn,
-            logdensity_fn,
-            **self.kernel_kwargs,
-            num_steps=num_warmup
+            self.kernel_fn, logdensity_fn, **self.kernel_kwargs, num_steps=num_warmup
         )
         self.rng_key, key = random.split(self.rng_key)
         last_state, kernel, _ = adapt.run(key, initial_position)
@@ -182,13 +173,9 @@ class BlackJaxHandler:
             )
         else:
             step_size = 1e-3
-            inverse_mass_size = sum(
-                v.size for _, v in initial_position.items()
-            )
+            inverse_mass_size = sum(v.size for _, v in initial_position.items())
             inverse_mass_matrix = jax.numpy.ones(inverse_mass_size)
-            kernel = self.kernel_fn(
-                logdensity_fn, step_size, inverse_mass_matrix
-            )
+            kernel = self.kernel_fn(logdensity_fn, step_size, inverse_mass_matrix)
             starting_state = kernel.init(initial_position)
             kernel = kernel.step
 
@@ -236,9 +223,7 @@ class InferBlackJax:
         """
         self.num_warmup = num_warmup
         self.num_samples = num_samples
-        self.handler = BlackJaxHandler(
-            kernel=kernel, seed=seed, **kernel_kwargs
-        )
+        self.handler = BlackJaxHandler(kernel=kernel, seed=seed, **kernel_kwargs)
 
     def fit(
         self, model: ModelSpec, data: DataSpec, name: Optional[str] = None
