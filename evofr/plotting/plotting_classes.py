@@ -1,36 +1,28 @@
 from typing import Dict, List, Optional, Tuple
-import matplotlib as mpl
+
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+
 from evofr.data.data_helpers import expand_dates
 from evofr.data.data_spec import DataSpec
-from evofr.plotting.plot_functions import (
-    add_dates_sep,
-    plot_R_censored,
-    plot_cases,
-    plot_ga_time_censored,
-    plot_growth_advantage,
-    plot_observed_frequency,
-    plot_posterior_I,
-    plot_posterior_frequency,
-    plot_ppc_frequency,
-    plot_time_varying_single,
-    plot_time_varying_variant,
-)
-
+from evofr.plotting.plot_functions import (add_dates_sep, plot_cases,
+                                           plot_ga_time_censored,
+                                           plot_growth_advantage,
+                                           plot_observed_frequency,
+                                           plot_posterior_frequency,
+                                           plot_posterior_I,
+                                           plot_ppc_frequency, plot_R_censored,
+                                           plot_time_varying_single,
+                                           plot_time_varying_variant)
 from evofr.posterior.posterior_handler import PosteriorHandler
-
 
 DEFAULT_FIG_SIZE = (10, 6)
 DEFAULT_PS = [0.8]
 DEFAULT_ALPHAS = [0.4]
 
 
-def create_empty_gridspec(
-    nrows: int, ncols: int, figsize: Optional[Tuple] = None
-):
-    fig = plt.figure(
-        figsize=figsize if figsize is not None else DEFAULT_FIG_SIZE
-    )
+def create_empty_gridspec(nrows: int, ncols: int, figsize: Optional[Tuple] = None):
+    fig = plt.figure(figsize=figsize if figsize is not None else DEFAULT_FIG_SIZE)
     gs = fig.add_gridspec(nrows=nrows, ncols=ncols)
     return fig, gs
 
@@ -49,7 +41,7 @@ def create_date_axis(ax, plot_dates, date_sep=None, forecast_L=0):
 def get_n_colors(n, cmap=None):
     """Returns a list of color of length n"""
     cmap = "tab20" if cmap is None else cmap
-    cmap_fn = plt.cm.get_cmap(cmap, n)
+    cmap_fn = plt.get_cmap(cmap, n)
     return [cmap_fn(i) for i in range(n)]
 
 
@@ -374,10 +366,13 @@ class PatchLegend:
         self.loc = loc
 
     def add_legend(self, fig=None, ax=None):
-        if fig is None and ax is not None:
-            fig = ax.get_figure()
+        if fig is None:
+            if ax is not None:
+                fig = ax.get_figure()
+            else:
+                return None
         patches = [
-            mpl.patches.Patch(color=color, label=label)
+            Patch(color=color, label=label)
             for label, color in self.color_map.items()
         ]
 
