@@ -2,6 +2,12 @@
 
 [![CI](https://github.com/blab/evofr/actions/workflows/ci.yaml/badge.svg)](https://github.com/blab/evofr/actions/workflows/ci.yaml)
 
+## Overview
+
+`evofr` is a Python package designed for evolutionary forecasting of genetic variants. 
+This project provides tools aimed at modeling and predicting the evolution and prevalence of genetic variants over time. 
+The package integrates various data handling, modeling, and plotting capabilities.
+
 ## Installation
 
 The latest release of this package can be installed with:
