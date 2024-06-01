@@ -63,7 +63,7 @@ def plot_variants(
 
     if plot_type == "violin":
         sns.violinplot(
-            data=values[:, variant_indices], palette=colors, scale="width", ax=ax
+            data=values[:, variant_indices], palette=colors, density_norm="width", ax=ax
         )
     elif plot_type == "histogram":
         for color, idx, variant in zip(colors, variant_indices, variants_to_plot):
