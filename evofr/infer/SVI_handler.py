@@ -1,15 +1,23 @@
 import pickle
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import jax.example_libraries.optimizers as optimizers
-from jax import jit, lax, random
+from jax import random
+from jax._src.random import KeyArray
 from numpyro.infer import SVI, Predictive, Trace_ELBO
 from numpyro.infer.autoguide import AutoGuide
 from numpyro.infer.svi import SVIState
 
+Optimizer = Any
+
 
 class SVIHandler:
-    def __init__(self, rng_key=1, loss=Trace_ELBO(num_particles=2), optimizer=None):
+    def __init__(
+        self,
+        rng_key: Optional[KeyArray] = None,
+        loss: Optional[Trace_ELBO] = None,
+        optimizer: Optional[Optimizer] = None,
+    ):
         """
         Construct SVI handler.
 
@@ -22,15 +30,16 @@ class SVIHandler:
             optional loss to be used for MCMC.
 
         optimizer:
-            optimizer to be used for SVI.
+            optimizer to be used for SVI. This can be any optimzer that is compatiable with numpyro e.g.
+            an instance of `NumPyroOptim` or an `optax.GradientTransformation`.
 
         Returns
         -------
         SVIHandler
         """
 
-        self.rng_key = random.PRNGKey(rng_key)
-        self.loss_fn = loss
+        self.rng_key = rng_key if rng_key is not None else random.PRNGKey(0)
+        self.loss_fn = loss if loss is not None else Trace_ELBO(num_particles=2)
         self.optimizer = optimizer
         self.svi_state = None
 

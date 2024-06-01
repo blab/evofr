@@ -2,8 +2,7 @@ from typing import Optional, Type
 
 import jax.numpy as jnp
 from numpyro.infer import init_to_value
-from numpyro.infer.autoguide import (AutoDelta, AutoGuide,
-                                     AutoMultivariateNormal)
+from numpyro.infer.autoguide import AutoDelta, AutoGuide, Autoregressive
 from numpyro.optim import Adam
 
 from evofr.data.data_spec import DataSpec
@@ -20,6 +19,7 @@ class InferSVI:
         lr: float,
         num_samples: int,
         guide_fn: Type[AutoGuide],
+        **handler_kwargs,
     ):
         """Construct class for specifying SVI inference method.
 
@@ -37,13 +37,17 @@ class InferSVI:
         guide_fn:
             variational model or guide to follow for SVI.
 
+        handler_kwargs:
+            keyword arguments that can be passed to SVIHandler such as
+            `loss_fn` (instance of TraceElbo) or `optimizer`.
+
         Returns
         -------
         InferSVI
         """
         self.iters = iters
         self.num_samples = num_samples
-        self.handler = SVIHandler(optimizer=Adam(lr))
+        self.handler = SVIHandler(optimizer=Adam(lr), **handler_kwargs)
         self.guide_fn = guide_fn
 
     def fit(
@@ -91,13 +95,15 @@ class InferSVI:
 
 
 class InferMAP(InferSVI):
-    def __init__(self, iters: int, lr: float):
-        super().__init__(iters, lr, 1, AutoDelta)
+    def __init__(self, iters: int, lr: float, **handler_kwargs):
+        super().__init__(iters, lr, 1, AutoDelta, **handler_kwargs)
 
 
 class InferFullRank(InferSVI):
-    def __init__(self, iters: int, lr: float, num_samples: int):
-        super().__init__(iters, lr, num_samples, AutoMultivariateNormal)
+    def __init__(self, iters: int, lr: float, num_samples: int, **handler_kwargs):
+        super().__init__(
+            iters, lr, num_samples, AutoMultivariateNormal, **handler_kwargs
+        )
 
 
 def init_to_MAP(
