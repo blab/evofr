@@ -81,7 +81,7 @@ def plot_variants(
         for idx, variant in enumerate(variants_to_plot):
             variant_values = values[:, variant_indices[idx]]
 
-            median = np.median(variant_values)
+            median = np.median(variant_values, axis=0)
             for quantile in quantiles:
                 lower = np.quantile(variant_values, 0.5 * (1 - quantile), axis=0)
                 upper = np.quantile(variant_values, 0.5 * (1 + quantile), axis=0)
