@@ -46,6 +46,4 @@ Indices and tables
 
    installation
    api_reference
-   mlr_quickstart
-
-=================================
+   notebooks/example_mlr.ipynb

@@ -21,11 +21,11 @@ release = evofr.__version__
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    "nbsphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx_rtd_theme",
-    "nbsphinx",
     "sphinx.ext.mathjax",
 ]
 
@@ -47,3 +47,10 @@ nbsphinx_execute = "never"
 # Napolean settings
 napoleon_google_docstring = True
 napoleon_numpy_docstring = True
+
+# Notebook parameters
+nbsphinx_execute_arguments = [
+    "--ExecutePreprocessor.timeout=60",
+    "--ExecutePreprocessor.allow_errors=True",
+    "--InlineBackend.figure_formats={'svg', 'pdf'}",
+]
