@@ -2,7 +2,7 @@ from typing import Optional, Type
 
 import jax.numpy as jnp
 from numpyro.infer import init_to_value
-from numpyro.infer.autoguide import AutoDelta, AutoGuide, Autoregressive
+from numpyro.infer.autoguide import AutoDelta, AutoGuide, AutoMultivariateNormal
 from numpyro.optim import Adam
 
 from evofr.data.data_spec import DataSpec
