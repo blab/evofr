@@ -60,7 +60,7 @@ class MCMCHandler:
         num_samples:
             number of samples to be returned in MCMC.
 
-        **mcmc_kwargs:
+        mcmc_kwargs:
             additional arguments to be passed to MCMC algorithms.
         """
         self.mcmc = MCMC(
