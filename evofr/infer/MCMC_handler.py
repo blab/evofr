@@ -1,14 +1,18 @@
+import pickle
 from typing import Callable, Dict, Optional, Type
 
-import jax.numpy as jnp
 from jax import random
+from jax._src.random import KeyArray
 from numpyro.infer import MCMC, NUTS, Predictive
 from numpyro.infer.mcmc import MCMCKernel
 
 
 class MCMCHandler:
     def __init__(
-        self, rng_key=1, kernel: Optional[Type[MCMCKernel]] = None, **kernel_kwargs
+        self,
+        rng_key: Optional[KeyArray] = None,
+        kernel: Optional[Type[MCMCKernel]] = None,
+        **kernel_kwargs
     ):
         """
         Construct MCMC handler.
@@ -28,7 +32,7 @@ class MCMCHandler:
         ------
         MCMCHandler
         """
-        self.rng_key = random.PRNGKey(rng_key)
+        self.rng_key = rng_key if rng_key is not None else random.PRNGKey(0)
         self.kernel = kernel if kernel else NUTS
         self.kernel_kwargs = kernel_kwargs
         self.mcmc = None
@@ -78,11 +82,11 @@ class MCMCHandler:
         if self.samples is None:
             return None
         with open(file_path, "wb") as f:
-            jnp.save(f, self.samples)
+            pickle.dump((self.samples, self.rng_key), f)
 
     def load_state(self, file_path):
         with open(file_path, "rb") as f:
-            self.samples = jnp.load(f)
+            self.samples, self.rng_key = pickle.load(f)
 
     def predict(self, model: Callable, data: Dict, **kwargs):
         predictive = Predictive(model, self.params)
