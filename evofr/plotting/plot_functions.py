@@ -281,7 +281,11 @@ def plot_growth_advantage(
         ax.axhline(y=1.0, color="k", linestyle="--")
 
     parts = ax.violinplot(
-        ga.T, inds, showmeans=False, showmedians=False, showextrema=False
+        [ga[:, i] for i in range(ga.shape[-1])],
+        inds,
+        showmeans=False,
+        showmedians=False,
+        showextrema=False,
     )
 
     for i, pc in enumerate(parts["bodies"]):
