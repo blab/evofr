@@ -11,3 +11,4 @@ repos:
         entry: poetry run isort
         language: system
         files: '\.py$'
+        args: ["--profile", "black"]
