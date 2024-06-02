@@ -144,5 +144,4 @@ def plot_time_series_with_variants(
 
     ax.set_xlabel("Date" if dates is not None else "Time Step")
     ax.set_ylabel("Values")
-    if quantiles:
-        ax.legend()
+    return ax
