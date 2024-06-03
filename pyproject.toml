@@ -31,7 +31,7 @@ pandoc = "^2.3"
 isort = "^5.13.2"
 pre-commit = "^3.7.1"
 
-[tool.poetry.group.docs.dependencies]
+[docs]
 jupyter = "^1.0.0"
 sphinx = "^7.3.7"
 sphinx-rtd-theme = "^2.0.0"
