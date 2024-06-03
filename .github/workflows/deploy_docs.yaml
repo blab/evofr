@@ -15,7 +15,7 @@ jobs:
       id-token: write
     steps:
     - id: deployment
-      uses: nikeee/setup-pandoc@v1
-      uses: sphinx-notes/pages@v3
-      with:
-        pyproject_extras: docs
+      - uses: nikeee/setup-pandoc@v1
+      - uses: sphinx-notes/pages@v3
+        with:
+          pyproject_extras: docs
