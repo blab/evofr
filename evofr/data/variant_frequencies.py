@@ -92,8 +92,8 @@ class VariantFrequencies(DataSpec):
         -------
         VariantFrequencies
         """
-        if (pivot is not None) and (var_name is not None):
-            raise ValueError("cannot set both pivot and var_name")
+        if (pivot is not None) and (var_names is not None):
+            raise ValueError("cannot set both pivot and var_names")
 
         # Get mapping from date to index
         if date_to_index is None:
