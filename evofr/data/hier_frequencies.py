@@ -5,6 +5,7 @@ import pandas as pd
 
 from .data_helpers import format_var_names, prep_dates
 from .data_spec import DataSpec
+from .temporal_aggregation import aggregate_temporally_hierarchical
 from .variant_frequencies import VariantFrequencies
 
 
@@ -15,6 +16,7 @@ class HierFrequencies(DataSpec):
         group: str,
         date_to_index: Optional[dict] = None,
         pivot: Optional[str] = None,
+        aggregation_frequency: Optional[str] = None,
     ):
         """Construct a data specification for handling variant frequencies
         in hierarchical models.
@@ -36,6 +38,10 @@ class HierFrequencies(DataSpec):
             Defaults to "other" if present otherwise.
             This will usually used as a reference or pivot strain.
 
+        aggregation_frequency:
+            optional temporal frequency used to aggregate daily counts to
+            larger time periods such as "W" (week) or "M" (month).
+
         Returns
         -------
         HierFrequencies
@@ -50,6 +56,17 @@ class HierFrequencies(DataSpec):
         raw_var_names.sort()
         self.var_names = format_var_names(raw_var_names, pivot=pivot)
         self.pivot = self.var_names[-1]
+
+        # Aggregate counts into larger windows
+        self.aggregation_frequency = aggregation_frequency
+        if self.aggregation_frequency is not None:
+            (
+                self.groups,
+                self.dates,
+                self.date_to_index,
+            ) = aggregate_temporally_hierarchical(
+                self.groups, self.dates, self.aggregation_frequency
+            )
 
         # Loop each group
         grouped = raw_seq.groupby(group)
