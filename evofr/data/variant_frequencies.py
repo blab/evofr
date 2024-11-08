@@ -4,6 +4,7 @@ import pandas as pd
 
 from .data_helpers import prep_dates, prep_sequence_counts
 from .data_spec import DataSpec
+from .temporal_aggregation import aggregate_temporally
 
 VARIANT_NAMES = ["Variant", "other"]
 START_DATE = pd.to_datetime("2022-01-01")
@@ -66,6 +67,7 @@ class VariantFrequencies(DataSpec):
         date_to_index: Optional[dict] = None,
         var_names: Optional[List] = None,
         pivot: Optional[str] = None,
+        aggregation_frequency: Optional[str] = None,
     ):
         """Construct a data specification for handling variant frequencies.
 
@@ -88,6 +90,10 @@ class VariantFrequencies(DataSpec):
             This will usually used as a reference or pivot strain.
             Can only be used if you do not set `var_names`.
 
+        aggregation_frequency:
+            optional temporal frequency used to aggregate daily counts to
+            larger time periods such as "W" (week) or "M" (month).
+
         Returns
         -------
         VariantFrequencies
@@ -105,6 +111,17 @@ class VariantFrequencies(DataSpec):
             raw_seq, self.date_to_index, var_names, pivot=pivot
         )
         self.pivot = self.var_names[-1]
+
+        # Aggregate counts into larger windows
+        self.aggregation_frequency = aggregation_frequency
+        if self.aggregation_frequency is not None:
+            (
+                self.seq_counts,
+                self.dates,
+                self.date_to_index,
+            ) = aggregate_temporally(
+                self.seq_counts, self.dates, self.aggregation_frequency
+            )
 
     def make_data_dict(self, data: Optional[dict] = None) -> dict:
         if data is None:
