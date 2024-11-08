@@ -80,16 +80,20 @@ class VariantFrequencies(DataSpec):
 
         var_names:
             optional list containing names of variants to be present.
+            The last of these variants is used as the pivot.
 
         pivot:
             optional name of variant to place last.
             Defaults to "other" if present otherwise.
             This will usually used as a reference or pivot strain.
+            Can only be used if you do not set `var_names`.
 
         Returns
         -------
         VariantFrequencies
         """
+        if (pivot is not None) and (var_names is not None):
+            raise ValueError("cannot set both pivot and var_names")
 
         # Get mapping from date to index
         if date_to_index is None:
