@@ -4,6 +4,7 @@ import pandas as pd
 def aggregate_temporally(seq_counts, dates, frequency):
     """
     Aggregates time-series data based on a specified frequency (e.g., weekly, monthly).
+    Full set of specfications for here: https://pandas.pydata.org/docs/dev/user_guide/timeseries.html#timeseries-offset-aliases
 
     Parameters:
         - 'seq_counts' (numpy.ndarray): A 2D array where each row corresponds to a time point and columns
