@@ -2,8 +2,7 @@ import pickle
 from typing import Any, Callable, Optional
 
 import jax.example_libraries.optimizers as optimizers
-from jax import random
-from jax._src.random import KeyArray
+from jax import random, Array
 from numpyro.infer import SVI, Predictive, Trace_ELBO
 from numpyro.infer.autoguide import AutoGuide
 from numpyro.infer.svi import SVIState
@@ -14,7 +13,7 @@ Optimizer = Any
 class SVIHandler:
     def __init__(
         self,
-        rng_key: Optional[KeyArray] = None,
+        rng_key: Optional[Array] = None,
         loss: Optional[Trace_ELBO] = None,
         optimizer: Optional[Optimizer] = None,
     ):
