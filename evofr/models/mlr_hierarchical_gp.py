@@ -5,8 +5,7 @@ import jax.numpy as jnp
 import numpy as np
 import numpyro
 import numpyro.distributions as dist
-from jax import jit, vmap
-from jax._src.interpreters.batching import Array
+from jax import jit, vmap, Array
 from jax.nn import softmax
 from jax.scipy.special import gammaln
 from numpyro.infer.reparam import TransformReparam

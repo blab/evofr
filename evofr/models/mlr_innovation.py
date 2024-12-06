@@ -8,7 +8,7 @@ import numpyro
 import numpyro.distributions as dist
 import pandas as pd
 from jax import vmap
-from jax._src.nn.functions import softmax
+from jax.nn import softmax
 
 from evofr.data.data_helpers import prep_dates, prep_sequence_counts
 from evofr.data.data_spec import DataSpec

@@ -5,7 +5,7 @@ import numpy as np
 import numpyro
 import numpyro.distributions as dist
 from jax import jit, lax
-from jax._src.nn.functions import softmax
+from jax.nn import softmax
 
 from evofr.models.model_spec import ModelSpec
 from evofr.models.renewal_model.basis_functions.basis_fns import BasisFunction
