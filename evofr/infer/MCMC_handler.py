@@ -1,8 +1,7 @@
 import pickle
 from typing import Callable, Dict, Optional, Type
 
-from jax import random
-from jax._src.random import KeyArray
+from jax import random, Array
 from numpyro.infer import MCMC, NUTS, Predictive
 from numpyro.infer.mcmc import MCMCKernel
 
@@ -10,7 +9,7 @@ from numpyro.infer.mcmc import MCMCKernel
 class MCMCHandler:
     def __init__(
         self,
-        rng_key: Optional[KeyArray] = None,
+        rng_key: Optional[Array] = None,
         kernel: Optional[Type[MCMCKernel]] = None,
         **kernel_kwargs
     ):
