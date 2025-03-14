@@ -10,18 +10,20 @@ import pandas as pd
 import yaml
 
 import evofr as ef
+from evofr.posterior.posterior_helpers import get_sites_variants_tidy
 
 # Set up basic logging.
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Import registries 
+# Import registries
 from evofr.commands.registries import INFERENCE_REGISTRY, PRIOR_REGISTRY
+
 # Import base classes that automatically register subclasses.
-from evofr.data.data_spec import \
-    DataSpec  # DataSpec.registry will be used for data.
-from evofr.models.model_spec import \
-    ModelSpec  # ModelSpec.registry will be used for models.
+from evofr.data.data_spec import DataSpec  # DataSpec.registry will be used for data.
+from evofr.models.model_spec import (  # ModelSpec.registry will be used for models.
+    ModelSpec,
+)
 
 
 # ----------------------------------------------------------------------------
@@ -112,7 +114,9 @@ def override_generic_paths_in_config(config, cli_args):
                     new_key = key[:-5]  # Remove the '_path' suffix.
                     new_config[new_key] = df
                 except Exception as e:
-                    raise ValueError(f"Failed to load file for key '{key}' from {file_path}: {e}")
+                    raise ValueError(
+                        f"Failed to load file for key '{key}' from {file_path}: {e}"
+                    )
             else:
                 new_config[key] = value
         return new_config
@@ -120,6 +124,46 @@ def override_generic_paths_in_config(config, cli_args):
         return [override_generic_paths_in_config(item, cli_args) for item in config]
     else:
         return config
+
+
+# ----------------------------------------------------------------------------
+# Exporting Results
+# ----------------------------------------------------------------------------
+def export_results(posterior, export_config):
+    """
+    Exports selected sites of interest from the posterior samples.
+
+    Parameters:
+    - posterior: PosteriorHandler object containing model results.
+    - export_config: Dictionary containing `export_path`, `sites`, `dated`, and `forecasts`.
+
+    Saves results to JSON in the specified export directory.
+    """
+    export_path = export_config.get("export_path", "results/")
+    sites = export_config["sites"]
+    dated = export_config["dated"]
+    forecasts = export_config["forecasts"]
+
+    os.makedirs(export_path, exist_ok=True)
+
+    logger.info(f"Exporting results for model: {posterior.name}")
+
+    results = get_sites_variants_tidy(
+        samples=posterior.samples,
+        data=posterior.data,
+        sites=sites,
+        dated=dated,
+        forecasts=forecasts,
+        ps=[0.5, 0.8, 0.95],  # Default percentiles
+        name=posterior.name,
+    )
+
+    results["metadata"]["updated"] = pd.to_datetime(date.today()).isoformat()
+
+    export_file = os.path.join(export_path, "results.json")
+    ef.save_json(results, path=export_file)
+
+    logger.info(f"Results exported to {export_file}")
 
 
 # ----------------------------------------------------------------------------
@@ -185,18 +229,7 @@ def run_model(args):
         raise
 
     # Export results using the package's export functions.
-    if args.export_path:
-        os.makedirs(args.export_path, exist_ok=True)
-        try:
-            results = ef.posterior.combine_sites_tidy(posterior)
-            results["metadata"]["updated"] = pd.to_datetime(date.today()).isoformat()
-            ef.save_json(results, path=os.path.join(args.export_path, "results.json"))
-            logger.info(
-                f"Results exported to {os.path.join(args.export_path, 'results.json')}"
-            )
-        except Exception as e:
-            logger.error(f"Failed to export results: {e}")
-            raise
+    export_results(posterior, config["export"])
 
 
 # ----------------------------------------------------------------------------
