@@ -2,9 +2,11 @@ from typing import Optional, Type
 
 import jax.numpy as jnp
 from numpyro.infer import init_to_value
-from numpyro.infer.autoguide import AutoDelta, AutoGuide, AutoMultivariateNormal
+from numpyro.infer.autoguide import (AutoDelta, AutoGuide,
+                                     AutoMultivariateNormal)
 from numpyro.optim import Adam
 
+from evofr.commands.registries import register_inference
 from evofr.data.data_spec import DataSpec
 from evofr.models.model_spec import ModelSpec
 from evofr.posterior.posterior_handler import PosteriorHandler
@@ -94,11 +96,12 @@ class InferSVI:
         return self.posterior
 
 
+@register_inference
 class InferMAP(InferSVI):
     def __init__(self, iters: int, lr: float, **handler_kwargs):
         super().__init__(iters, lr, 1, AutoDelta, **handler_kwargs)
 
-
+@register_inference
 class InferFullRank(InferSVI):
     def __init__(self, iters: int, lr: float, num_samples: int, **handler_kwargs):
         super().__init__(

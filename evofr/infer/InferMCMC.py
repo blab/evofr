@@ -3,6 +3,7 @@ from typing import Optional, Type
 from numpyro.infer import NUTS
 from numpyro.infer.mcmc import MCMCKernel
 
+from evofr.commands.registries import register_inference
 from evofr.data.data_spec import DataSpec
 from evofr.models.model_spec import ModelSpec
 from evofr.posterior.posterior_handler import PosteriorHandler
@@ -74,6 +75,7 @@ class InferMCMC:
         return self.posterior
 
 
+@register_inference
 class InferNUTS(InferMCMC):
     def __init__(self, num_warmup: int, num_samples: int, **kernel_kwargs):
         super().__init__(num_warmup, num_samples, NUTS, **kernel_kwargs)
