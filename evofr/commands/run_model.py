@@ -198,7 +198,6 @@ def run_model(args):
     # Override file paths in the data config using command-line arguments.
     config["model"] = override_generic_paths_in_config(config["model"], args)
     config["data"] = override_generic_paths_in_config(config["data"], args)
-    print(config["model"])
     if args.cases_path:
         try:
             config["data"]["cases_path"] = pd.read_csv(args.cases_path, sep="\t")

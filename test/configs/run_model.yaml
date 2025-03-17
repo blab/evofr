@@ -1,0 +1,16 @@
+model:
+  type: "MultinomialLogisticRegression"
+  tau: 4.2
+data:
+  type: "VariantFrequencies"
+  raw_seq_path: "test/data/processed_sequences_test.tsv"
+  pivot: "C"
+inference:
+  type: "InferNUTS"
+  num_warmup: 10
+  num_samples: 10
+export:
+  export_path: "test/output/results"
+  sites: ["freq", "ga"]
+  dated: [True, False]
+  forecasts: [False, False]
