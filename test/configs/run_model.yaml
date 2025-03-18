@@ -6,9 +6,9 @@ data:
   raw_seq_path: "test/data/processed_sequences_test.tsv"
   pivot: "C"
 inference:
-  type: "InferNUTS"
-  num_warmup: 10
-  num_samples: 10
+  type: "InferMAP"
+  iters: 1000
+  lr: 0.0004
 export:
   export_path: "test/output/results"
   sites: ["freq", "ga"]
