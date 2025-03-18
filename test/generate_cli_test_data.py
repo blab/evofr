@@ -65,7 +65,7 @@ def expand_seq_counts(df, location="TestCity"):
 
 
 def generate_test_data():
-    os.makedirs("data", exist_ok=True)
+    os.makedirs("test/data", exist_ok=True)
 
     # --- Simulate Sequence Counts ---
     deltas = np.array([1.1, 1.8, 1.0])
@@ -76,13 +76,13 @@ def generate_test_data():
     _, var_counts = simulate_MLR(deltas, freq0, tau=4.2, Ns=Ns)
     seq_counts = variant_counts_to_dataframe(var_counts, var_names=["A", "B", "C"])
     seq_counts["clade"] = seq_counts["variant"]
-    seq_counts.to_csv("data/processed_sequences_test.tsv", sep="\t", index=False)
+    seq_counts.to_csv("test/data/processed_sequences_test.tsv", sep="\t", index=False)
     print("Saved test/data/processed_sequences_test.tsv")
 
     # Expand to strain-level metadata
     # raw_sequences = expand_seq_counts(seq_counts, location="TestCity")
     # Save as tests/data/raw_sequences.tsv (note: no "_expanded" suffix)
-    seq_counts.to_csv("data/raw_sequences.tsv", sep="\t", index=False)
+    seq_counts.to_csv("test/data/raw_sequences.tsv", sep="\t", index=False)
     print("Saved test/data/raw_sequences.tsv")
 
     # --- Simulate Case Counts ---
@@ -90,7 +90,7 @@ def generate_test_data():
     np.random.seed(42)
     cases = np.random.poisson(lam=400, size=len(dates))
     cases_df = pd.DataFrame({"location": "TestCity", "date": dates, "cases": cases})
-    cases_df.to_csv("data/raw_cases.tsv", sep="\t", index=False)
+    cases_df.to_csv("test/data/raw_cases.tsv", sep="\t", index=False)
     print("Saved test/data/raw_cases.tsv")
 
 

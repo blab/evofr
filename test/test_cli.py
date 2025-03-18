@@ -16,7 +16,7 @@ def generate_test_data():
     raw_seq_file = TEST_DATA_DIR / "raw_sequences.tsv"
     raw_cases_file = TEST_DATA_DIR / "raw_cases.tsv"
     if not raw_seq_file.exists() or not raw_cases_file.exists():
-        subprocess.run("python generate_cli_test_data.py", shell=True, check=True)
+        subprocess.run("python test/generate_cli_test_data.py", shell=True, check=True)
     # Clean output directory.
     if TEST_OUTPUT_DIR.exists():
         shutil.rmtree(TEST_OUTPUT_DIR)
