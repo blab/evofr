@@ -311,9 +311,12 @@ class RelativeFitnessDR(ModelSpec):
                 relative_fitness_dr_hier_numpyro,
                 dim=self.dim,
                 phi_model=self.phi_model,
+                tau=self.tau,
             )
         else:
-            self.model_fn = partial(relative_fitness_dr_numpyro, dim=self.dim)
+            self.model_fn = partial(
+                relative_fitness_dr_numpyro, dim=self.dim, tau=self.tau
+            )
 
     def augment_data(self, data: dict) -> None:
         data["dim"] = self.dim
