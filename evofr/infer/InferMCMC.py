@@ -3,7 +3,9 @@ from typing import Optional, Type
 from numpyro.infer import NUTS
 from numpyro.infer.mcmc import MCMCKernel
 
+from evofr.commands.registries import register_inference
 from evofr.data.data_spec import DataSpec
+from evofr.infer.InferSVI import init_to_MAP
 from evofr.models.model_spec import ModelSpec
 from evofr.posterior.posterior_handler import PosteriorHandler
 
@@ -74,6 +76,26 @@ class InferMCMC:
         return self.posterior
 
 
+@register_inference
 class InferNUTS(InferMCMC):
     def __init__(self, num_warmup: int, num_samples: int, **kernel_kwargs):
         super().__init__(num_warmup, num_samples, NUTS, **kernel_kwargs)
+
+
+@register_inference
+class InferNUTS_from_MAP:
+    def __init__(self, num_warmup, num_samples, iters, lr):
+        self.num_warmup = num_warmup
+        self.num_samples = num_samples
+        self.iters = iters
+        self.lr = lr
+
+    def fit(self, model, data, name=None):
+        init_strat, _ = init_to_MAP(model, data, iters=self.iters, lr=self.lr)
+        inference_method = InferNUTS(
+            num_warmup=self.num_warmup,
+            num_samples=self.num_samples,
+            init_strategy=init_strat,
+            dense_mass=True,
+        )
+        return inference_method.fit(model, data, name=name)

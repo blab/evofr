@@ -1,0 +1,12 @@
+prepare_data:
+  seq_counts: "test/data/raw_sequences.tsv"
+  cases: "test/data/raw_cases.tsv"   # Optional; can be omitted if cases not needed
+  output_seq_counts: "test/data/processed_sequences.tsv"
+  output_cases: "test/data/processed_cases.tsv"  # Optional; only if cases are provided
+  max_date: "2022-04-10"
+  included_days: 100
+  prune_seq_days: 7
+  location_min_seq: 1
+  location_min_seq_days: 100
+  clade_min_seq: 1
+  clade_min_seq_days: 100

@@ -10,6 +10,7 @@ import pandas as pd
 from jax import vmap
 from jax._src.nn.functions import softmax
 
+from evofr.commands.registries import register_prior
 from evofr.data.data_helpers import prep_dates, prep_sequence_counts
 from evofr.data.data_spec import DataSpec
 from evofr.models.renewal_model.model_options import MultinomialSeq
@@ -27,6 +28,7 @@ class DeltaPriorModel(ABC):
         pass
 
 
+@register_prior
 class DeltaNormalPrior(DeltaPriorModel):
     def __init__(self, loc: Optional[float] = None, scale: Optional[float] = None):
         self.loc = loc
@@ -51,6 +53,7 @@ class DeltaNormalPrior(DeltaPriorModel):
         return raw_delta
 
 
+@register_prior
 class DeltaRegressionPrior(DeltaPriorModel):
     def __init__(self, features):
         """Construct a regression-based prior for relative fitness innovations.
@@ -267,7 +270,7 @@ def prep_clade_list(
     """
 
     # First check:
-    # SHould be able to reduce to a faster solve maybe?
+    # Should be able to reduce to a faster solve maybe?
     var_names = (
         list(raw_variant_parents.variant.unique()) if var_names is None else var_names
     )
