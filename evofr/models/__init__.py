@@ -1,3 +1,16 @@
+from latent_immunity_relative_fitness import (
+    LatentHGSP,
+    LatentRW,
+    LatentSplineRW,
+    RelativeFitnessDR,
+)
+from relative_fitness_hsgp import (
+    HSGaussianProcess,
+    Matern,
+    RelativeFitnessHSGP,
+    SquaredExponential,
+)
+
 from .migration_from_distances import *
 from .mlr_hierarchical import HierMLR
 from .mlr_hierarchical_gp import HierMLR_HSGP, Matern, SquaredExponential
