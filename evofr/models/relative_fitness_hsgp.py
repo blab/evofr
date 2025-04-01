@@ -12,6 +12,8 @@ from jax.scipy.special import gammaln
 
 import evofr as ef
 
+from .model_spec import ModelSpec
+
 
 class HSGaussianProcess:
     """
@@ -238,7 +240,7 @@ def relative_fitness_hsgp_numpyro(
         )  # Last row corresponds to linear predictor / growth advantage
 
 
-class RelativeFitnessHSGP(ef.ModelSpec):
+class RelativeFitnessHSGP(ModelSpec):
     def __init__(
         self,
         hsgp: Optional[HSGaussianProcess] = None,
@@ -258,7 +260,7 @@ class RelativeFitnessHSGP(ef.ModelSpec):
         data: ef.VariantFrequencies,
         num_warmup: int = 100,
         num_samples: int = 100,
-    ) -> ef.PosteriorHandler:
+    ):
         """
         Abstract away NUTS stuff in Evofr and numpyro for quick usage.
         """

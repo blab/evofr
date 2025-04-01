@@ -8,9 +8,11 @@ import numpyro.distributions as dist
 from jax.nn import softmax
 from numpyro.distributions.distribution import TransformedDistribution
 from numpyro.distributions.transforms import OrderedTransform
-from relative_fitness_mechanisms.relative_fitness_hsgp import HSGaussianProcess
 
 import evofr as ef
+from evofr.models.relative_fitness_hsgp import HSGaussianProcess
+
+from .model_spec import ModelSpec
 
 
 class LatentRW:
@@ -292,7 +294,7 @@ def relative_fitness_dr_numpyro(
         )  # Last row corresponds to linear predictor / growth advantage
 
 
-class RelativeFitnessDR(ef.ModelSpec):
+class RelativeFitnessDR(ModelSpec):
     def __init__(
         self,
         dim: int,
@@ -323,7 +325,7 @@ class RelativeFitnessDR(ef.ModelSpec):
         data: ef.VariantFrequencies,
         num_warmup: int = 100,
         num_samples: int = 100,
-    ) -> ef.PosteriorHandler:
+    ):
         """
         Abstract away NUTS stuff in Evofr and numpyro for quick usage.
         """
