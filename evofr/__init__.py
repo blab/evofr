@@ -28,6 +28,8 @@ from .models import (
     ModelSpec,
     MultinomialLogisticRegression,
     PianthamModel,
+    RelativeFitnessDR,
+    RelativeFitnessHSGP,
 )
 from .models.renewal_model import *
 from .posterior import (
