@@ -3,3 +3,6 @@ __pycache__/
 *.DS_Store
 
 notebooks/.ipynb_checkpointsdocs/_build/html
+
+.coverage
+coverage.xml
