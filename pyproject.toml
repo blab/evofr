@@ -19,11 +19,9 @@ blackjax = "^0.9.6"
 matplotlib = "^3.9"
 seaborn = "^0.13.2"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"
 pytest = "^7.1.2"
-
-[tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
 pylint = "^3.1.0"
 wrapt = "^1.16.0"
