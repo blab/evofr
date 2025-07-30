@@ -71,5 +71,14 @@ jobs:
       # Install project. 
       - run: poetry install --no-interaction
 
-      # Run tests.
-      - run: poetry run pytest
+      # Run tests with coverage.
+      - run: poetry run coverage run -m pytest
+
+      # Generate coverage report.
+      - run: poetry run coverage xml
+
+      # Upload coverage report to Codecov.
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
