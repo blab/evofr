@@ -10,8 +10,7 @@ from jax.nn import softmax
 from numpyro.infer.reparam import TransformReparam
 
 from .model_spec import ModelSpec
-from .multinomial_logistic_regression import (MultinomialLogisticRegression,
-                                              simulate_MLR)
+from .multinomial_logistic_regression import MultinomialLogisticRegression, simulate_MLR
 
 
 def simulate_hier_mlr(growth_advantages, freq0, tau, Ns):
@@ -29,7 +28,15 @@ def simulate_hier_mlr(growth_advantages, freq0, tau, Ns):
 
 
 def hier_MLR_numpyro(
-    seq_counts, N, X, tau=None, pool_scale=None, pred=False, var_names=None
+    seq_counts,
+    N,
+    X,
+    tau=None,
+    pool_scale=None,
+    xi_prior=None,
+    xi_by_group=False,
+    pred=False,
+    var_names=None,
 ):
     _, N_variants, N_groups = seq_counts.shape
     _, N_features, _ = X.shape
@@ -96,18 +103,46 @@ def hier_MLR_numpyro(
     logits = dot_by_group(X, beta)  # Logit frequencies by variant
 
     # Evaluate likelihood
-    obs = None if pred else np.swapaxes(np.nan_to_num(seq_counts), 1, 2)
+    if xi_prior is None:
+        obs = None if pred else np.swapaxes(np.nan_to_num(seq_counts), 1, 2)
 
-    _seq_counts = numpyro.sample(
-        "_seq_counts",
-        dist.MultinomialLogits(
-            logits=jnp.swapaxes(logits, 1, 2), total_count=np.nan_to_num(N)
-        ),
-        obs=obs,
-    )
+        _seq_counts = numpyro.sample(
+            "_seq_counts",
+            dist.MultinomialLogits(
+                logits=jnp.swapaxes(logits, 1, 2), total_count=np.nan_to_num(N)
+            ),
+            obs=obs,
+        )
 
-    # Re-ordering so groups are last
-    seq_counts = numpyro.deterministic("seq_counts", jnp.swapaxes(_seq_counts, 2, 1))
+        # Re-ordering so groups are last
+        seq_counts = numpyro.deterministic(
+            "seq_counts", jnp.swapaxes(_seq_counts, 2, 1)
+        )
+    else:
+        # Overdispersion in sequence counts
+        if xi_by_group:
+            with numpyro.plate("group", N_groups, dim=-1):
+                xi = numpyro.sample("xi", dist.Beta(1, xi_prior))
+            trans_xi = (jnp.reciprocal(xi) - 1)[None, :, None]
+        else:
+            xi = numpyro.sample("xi", dist.Beta(1, xi_prior))
+            trans_xi = jnp.reciprocal(xi) - 1
+
+        obs = None if pred else np.swapaxes(np.nan_to_num(seq_counts), 1, 2)
+        _freq = softmax(logits, axis=1)
+        _seq_counts = numpyro.sample(
+            "_seq_counts",
+            dist.DirichletMultinomial(
+                concentration=1e-8 + trans_xi * jnp.swapaxes(_freq, 1, 2),
+                total_count=np.nan_to_num(N),
+            ),
+            obs=obs,
+        )
+
+        # Re-ordering so groups are last
+        seq_counts = numpyro.deterministic(
+            "seq_counts", jnp.swapaxes(_seq_counts, 2, 1)
+        )
 
     # Compute frequency
     numpyro.deterministic("freq", softmax(logits, axis=1))
@@ -121,7 +156,13 @@ def hier_MLR_numpyro(
 
 
 class HierMLR(ModelSpec):
-    def __init__(self, tau: float, pool_scale: Optional[float] = None) -> None:
+    def __init__(
+        self,
+        tau: float,
+        pool_scale: Optional[float] = None,
+        xi_prior: Optional[float] = None,
+        xi_by_group: bool = False,
+    ) -> None:
         """Construct ModelSpec for Hierarchial multinomial logistic regression.
 
         Parameters
@@ -132,13 +173,27 @@ class HierMLR(ModelSpec):
         pool_scale:
             Prior standard deviation for pooling of growth advantages.
 
+        xi_prior:
+            Prior strength on over-dispersion of sequence counts.
+            No over-dispersion is modeled if this is left as None.
+
+        xi_by_group:
+            If over-dispersion is present, this determines whether each geography has its own over-dispersion.
+
         Returns
         -------
         HierMLR
         """
         self.tau = tau  # Fixed generation time
         self.pool_scale = pool_scale  # Prior std for coefficients
-        self.model_fn = partial(hier_MLR_numpyro, pool_scale=self.pool_scale)
+        self.xi_prior = xi_prior  # Over-dispersion prior
+        self.xi_by_group = xi_by_group
+        self.model_fn = partial(
+            hier_MLR_numpyro,
+            pool_scale=self.pool_scale,
+            xi_prior=self.xi_prior,
+            xi_by_group=self.xi_by_group,
+        )
 
     @staticmethod
     def make_ols_feature(start, stop, n_groups):
