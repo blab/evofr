@@ -288,19 +288,23 @@ def get_sites_variants_tidy(
     forecasts: List[bool],
     ps,
     name: Optional[str] = None,
+    ps_point_estimator: Optional[str] = "median",
 ):
     # Save metadata
     metadata = dict()
 
     # Make keys for probability levels
-    ps_keys = ["median"]
+    ps_keys = [
+        "median",
+        "mean",
+    ]
     for p in ps:
         ps_keys.append(f"HDI_{round(p * 100)}_upper")
         ps_keys.append(f"HDI_{round(p * 100)}_lower")
     metadata["ps"] = ps_keys
 
     # Save the requested point estimator function.
-    metadata["ps_point_estimator"] = "median"
+    metadata["ps_point_estimator"] = ps_point_estimator
 
     metadata["sites"] = sites
     if name:
