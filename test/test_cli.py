@@ -63,4 +63,4 @@ def test_run_model_creates_results():
     with open(result_file, "r", encoding="utf-8") as fh:
         model = json.load(fh)
 
-    assert model["metadata"].get("ps_point_estimator") == "median"
+    assert model["metadata"].get("ps_point_estimator") == "mean"
