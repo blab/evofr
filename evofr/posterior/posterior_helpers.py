@@ -299,6 +299,9 @@ def get_sites_variants_tidy(
         ps_keys.append(f"HDI_{round(p * 100)}_lower")
     metadata["ps"] = ps_keys
 
+    # Save the requested point estimator function.
+    metadata["ps_point_estimator"] = "median"
+
     metadata["sites"] = sites
     if name:
         metadata["location"] = [name]
