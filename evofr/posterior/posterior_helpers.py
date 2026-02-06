@@ -34,6 +34,11 @@ def get_quantile(samples: Dict, p, site):
     return jnp.quantile(samples[site], q=q, axis=0)
 
 
+def get_mean(samples: Dict, site):
+    """Returns mean value across all samples for a site"""
+    return jnp.mean(samples[site], axis=0)
+
+
 def get_median(samples: Dict, site):
     """Returns median value across all samples for a site"""
     return jnp.median(samples[site], axis=0)
@@ -339,6 +344,7 @@ def get_sites_variants_tidy(
         # Loop over entries of median and
         med, quants = get_quantiles(samples, ps, site)
         med, quants = np.array(med), np.array(quants)
+        means = np.array(get_mean(samples, site))
 
         entries = []
         T, N_variants = med.shape
@@ -369,6 +375,14 @@ def get_sites_variants_tidy(
 
                 # Add median entry
                 entries.append(entry_med)
+
+                # Create mean entry
+                entry_mean = entry.copy()
+                entry_mean["value"] = np.around(means[index, v], decimals=3)
+                entry_mean["ps"] = "mean"
+
+                # Add mean entry
+                entries.append(entry_mean)
 
                 # Loop over intervals of interest
                 for i, p in enumerate(ps):
