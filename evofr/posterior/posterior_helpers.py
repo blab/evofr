@@ -405,6 +405,7 @@ def get_sites_variants_tidy(
         # Loop over entries of median and
         med, quants = get_quantiles(samples, ps, site)
         med, quants = np.array(med), np.array(quants)
+        means = np.array(get_mean(samples, site))
 
         entries = []
         N_variants = med.shape[0]
@@ -427,6 +428,14 @@ def get_sites_variants_tidy(
 
             # Add median entry
             entries.append(entry_med)
+
+            # Create mean entry
+            entry_mean = entry.copy()
+            entry_mean["value"] = np.around(means[v], decimals=3)
+            entry_mean["ps"] = "mean"
+
+            # Add mean entry
+            entries.append(entry_mean)
 
             # Loop over intervals of interest
             for i, p in enumerate(ps):
