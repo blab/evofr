@@ -1,3 +1,4 @@
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -58,3 +59,8 @@ def test_run_model_creates_results():
     run_cli(command)
     result_file = export_dir / "results.json"
     assert result_file.exists(), "Results JSON file not created."
+
+    with open(result_file, "r", encoding="utf-8") as fh:
+        model = json.load(fh)
+
+    assert model["metadata"].get("ps_point_estimator") == "median"
