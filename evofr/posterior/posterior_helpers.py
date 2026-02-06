@@ -469,7 +469,10 @@ def combine_sites_tidy(tidy_dicts):
 
     for tidy_dict in tidy_dicts:
         for key, value in tidy_dict["metadata"].items():
-            metadata[key].extend([v for v in value if v not in metadata[key]])
+            if isinstance(value, list):
+                metadata[key].extend([v for v in value if v not in metadata[key]])
+            else:
+                metadata[key] = value
 
     # Loop over data
     entries = []
