@@ -64,3 +64,4 @@ def test_run_model_creates_results():
         model = json.load(fh)
 
     assert model["metadata"].get("ps_point_estimator") == "mean"
+    assert any(record["ps"] == "mean" for record in model["data"])
