@@ -11,4 +11,6 @@ The "__NEXT__" heading below describes changes in the unreleased development sou
 
 # 0.2.0 (February 9, 2026)
 
+## Features
+
  - Support alternate point estimators for posterior distributions of frequencies and growth advantages (e.g., mean or median). See [#65](https://github.com/blab/evofr/pull/65) for more.
