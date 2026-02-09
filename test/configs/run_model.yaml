@@ -14,3 +14,4 @@ export:
   sites: ["freq", "ga"]
   dated: [True, False]
   forecasts: [False, False]
+  ps_point_estimator: "mean"

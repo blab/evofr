@@ -156,6 +156,7 @@ def export_results(posterior, export_config):
         forecasts=forecasts,
         ps=[0.5, 0.8, 0.95],  # Default percentiles
         name=posterior.name,
+        ps_point_estimator=export_config.get("ps_point_estimator", "median"),
     )
 
     results["metadata"]["updated"] = pd.to_datetime(date.today()).isoformat()

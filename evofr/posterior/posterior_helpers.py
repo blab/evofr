@@ -34,6 +34,11 @@ def get_quantile(samples: Dict, p, site):
     return jnp.quantile(samples[site], q=q, axis=0)
 
 
+def get_mean(samples: Dict, site):
+    """Returns mean value across all samples for a site"""
+    return jnp.mean(samples[site], axis=0)
+
+
 def get_median(samples: Dict, site):
     """Returns median value across all samples for a site"""
     return jnp.median(samples[site], axis=0)
@@ -288,16 +293,23 @@ def get_sites_variants_tidy(
     forecasts: List[bool],
     ps,
     name: Optional[str] = None,
+    ps_point_estimator: Optional[str] = "median",
 ):
     # Save metadata
     metadata = dict()
 
     # Make keys for probability levels
-    ps_keys = ["median"]
+    ps_keys = [
+        "median",
+        "mean",
+    ]
     for p in ps:
         ps_keys.append(f"HDI_{round(p * 100)}_upper")
         ps_keys.append(f"HDI_{round(p * 100)}_lower")
     metadata["ps"] = ps_keys
+
+    # Save the requested point estimator function.
+    metadata["ps_point_estimator"] = ps_point_estimator
 
     metadata["sites"] = sites
     if name:
@@ -332,6 +344,7 @@ def get_sites_variants_tidy(
         # Loop over entries of median and
         med, quants = get_quantiles(samples, ps, site)
         med, quants = np.array(med), np.array(quants)
+        means = np.array(get_mean(samples, site))
 
         entries = []
         T, N_variants = med.shape
@@ -363,6 +376,14 @@ def get_sites_variants_tidy(
                 # Add median entry
                 entries.append(entry_med)
 
+                # Create mean entry
+                entry_mean = entry.copy()
+                entry_mean["value"] = np.around(means[index, v], decimals=3)
+                entry_mean["ps"] = "mean"
+
+                # Add mean entry
+                entries.append(entry_mean)
+
                 # Loop over intervals of interest
                 for i, p in enumerate(ps):
                     entry_lower = entry.copy()
@@ -384,6 +405,7 @@ def get_sites_variants_tidy(
         # Loop over entries of median and
         med, quants = get_quantiles(samples, ps, site)
         med, quants = np.array(med), np.array(quants)
+        means = np.array(get_mean(samples, site))
 
         entries = []
         N_variants = med.shape[0]
@@ -406,6 +428,14 @@ def get_sites_variants_tidy(
 
             # Add median entry
             entries.append(entry_med)
+
+            # Create mean entry
+            entry_mean = entry.copy()
+            entry_mean["value"] = np.around(means[v], decimals=3)
+            entry_mean["ps"] = "mean"
+
+            # Add mean entry
+            entries.append(entry_mean)
 
             # Loop over intervals of interest
             for i, p in enumerate(ps):
@@ -439,7 +469,10 @@ def combine_sites_tidy(tidy_dicts):
 
     for tidy_dict in tidy_dicts:
         for key, value in tidy_dict["metadata"].items():
-            metadata[key].extend([v for v in value if v not in metadata[key]])
+            if isinstance(value, list):
+                metadata[key].extend([v for v in value if v not in metadata[key]])
+            else:
+                metadata[key] = value
 
     # Loop over data
     entries = []
