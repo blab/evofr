@@ -30,3 +30,14 @@ The package can then be installed from the resulting wheel file using
 ```
 pip install <path-to-wheel>
 ```
+
+## Releasing a new version
+
+Bump the version in `pyproject.toml`, following [semantic versioning rules](https://semver.org/spec/v2.0.0.html), and push to the main branch.
+[Create a new release on GitHub](https://github.com/blab/evofr/releases/new) using the new version number as the tag.
+Locally, run `poetry build` to build the distribution package.
+
+Setup [an API token to publish to PyPI](https://test.pypi.org/help/#apitoken), if you haven't before.
+[Configure poetry to register your PyPI credentials](https://python-poetry.org/docs/repositories/#configuring-credentials).
+
+Run `poetry publish` to upload the package to PyPI.
