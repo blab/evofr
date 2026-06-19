@@ -9,6 +9,12 @@ The "__NEXT__" heading below describes changes in the unreleased development sou
 
 # __NEXT__
 
+# 0.2.1 (June 18, 2026)
+
+## Changes
+
+ - Relax the `numpy` and `pandas` dependency constraints from `^` (which capped both below 2.0) to `>=`, so evofr installs against modern numpy/pandas (2.x/3.x) and on Python 3.12+ without falling back to building old, unsupported source releases.
+
 # 0.2.0 (February 9, 2026)
 
 ## Features
